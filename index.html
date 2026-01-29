@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>사급자재 실시간 통합 관리 시스템</title>
+    <style>
+        :root { --primary: #1e40af; --bg: #f1f5f9; --warn: #dc2626; --part: #d97706; --success: #059669; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); padding: 20px; color: #1e293b; }
+        .container { max-width: 1700px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; color: var(--primary); border-left: 6px solid var(--primary); padding-left: 15px; margin-bottom: 20px; }
+        
+        /* 입력부 스타일 */
+        .input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; background: #f8fafc; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
+        .field { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 11px; font-weight: bold; color: #64748b; }
+        input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        
+        .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-add { background: var(--primary); color: white; grid-column: 1 / -1; }
+        .btn-excel { background: #059669; color: white; }
+        .btn-delete { background: none; color: #94a3b8; font-size: 11px; }
+        .btn-copy { background: #e2e8f0; color: #475569; padding: 2px 6px; font-size: 10px; margin-left: 5px; border-radius: 4px; border: 1px solid #cbd5e1; }
+
+        .search-container { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; background: #eff6ff; padding: 15px; border-radius: 8px; border: 1px solid #dbeafe; }
+        .search-input { padding: 8px; width: 180px; border: 1px solid #cbd5e1; border-radius: 6px; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f1f5f9; color: #475569; padding: 12px 10px; font-size: 12px; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-size: 13px; }
+        
+        .editable { cursor: pointer; border-radius: 4px; padding: 2px 5px; }
+        .editable:hover { background: #fff9c4; }
+        .edit-input { width: 90%; padding: 4px; border: 2px solid var(--primary); border-radius: 4px; text-align: center; font-size: 13px; }
+
+        .status-badge { padding: 4px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
+        .status-none { background: #fee2e2; color: #991b1b; }
+        .status-part { background: #fef3c7; color: #92400e; }
+        .status-full { background: #dcfce7; color: #166534; }
+        #syncStatus { font-size: 12px; color: var(--success); margin-left: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📊 사급자재 통합 관리 시스템 <span id="syncStatus">● 연결 확인 중...</span></h2>
+
+    <div class="input-section">
+        <div class="input-grid">
+            <div class="field"><label>등록일자</label><input type="date" id="pRegDate"></div>
+            <div class="field"><label>프로젝트명</label><input type="text" id="pName" placeholder="프로젝트명"></div>
+            <div class="field"><label>발주번호</label><input type="text" id="pOrder" placeholder="발주번호"></div>
+            <div class="field"><label>업체명</label><input type="text" id="pVendor" placeholder="업체명"></div>
+            <div class="field"><label>자재명</label><input type="text" id="pItem" placeholder="자재명"></div>
+            <div class="field"><label>필요수량</label><input type="number" id="pTargetQty" value="1"></div>
+            <div class="field"><label>입고수량</label><input type="number" id="pInQty" value="0"></div>
+            <div class="field"><label>비고</label><input type="text" id="pRemark" placeholder="비고"></div>
+            <button class="btn btn-add" onclick="addItem()">실시간 데이터 등록</button>
+        </div>
+    </div>
+
+    <div class="search-container">
+        <div class="search-box"><label>🏢 업체명 </label><input type="text" id="searchVendor" onkeyup="render()" class="search-input"></div>
+        <div class="search-box"><label>🔍 자재/프로젝트 </label><input type="text" id="searchItem" onkeyup="render()" class="search-input"></div>
+        <div style="flex-grow: 1; text-align: right;"><button class="btn btn-excel" onclick="exportCSV()">엑셀 저장</button></div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>등록일자</th>
+                <th>프로젝트명 (수정/복사)</th>
+                <th>발주번호</th>
+                <th>업체명</th>
+                <th>자재명</th>
+                <th>필요</th>
+                <th>입고</th>
+                <th>잔여</th>
+                <th>상태</th>
+                <th>비고</th>
+                <th>관리</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    // ⚠️ 본인의 Firebase URL을 꼭 확인하세요!
+    const DATABASE_URL = "https://ske-0001-default-rtdb.firebaseio.com/"; 
+    const DB_PATH = DATABASE_URL + "inventory.json";
+
+    let inventory = [];
+
+    // [복구용 데이터] 이미지 자료를 그대로 옮겼습니다.
+    const recoveryData = [
+        { regDate: '2026-01-29', project: 'APOLLO-D(SF3-17463)', order: 'PS26A22071', vendor: '프로텍', item: 'LK-GC10', targetQty: 3, inQty: 0, remark: '', timestamp: 1 },
+        { regDate: '2026-01-29', project: 'APOLLO-D(SF3-17463)', order: 'PS26A22071', vendor: '프로텍', item: 'PIEZO 7M', targetQty: 3, inQty: 0, remark: '', timestamp: 2 },
+        { regDate: '2026-01-29', project: 'APOLLO-D SF3-17462', order: 'PS26A22071', vendor: '프로텍', item: 'LK-GC10', targetQty: 3, inQty: 0, remark: '', timestamp: 3 },
+        { regDate: '2026-01-29', project: 'APOLLO-D SF3-17462', order: 'PS26A22071', vendor: '프로텍', item: 'PIEZO 7M', targetQty: 3, inQty: 0, remark: '', timestamp: 4 },
+        { regDate: '2026-01-29', project: 'APOLLO-D SF3-17462', order: 'PS26A22071', vendor: '프로텍', item: 'CCB-PWRIO-07', targetQty: 3, inQty: 0, remark: '', timestamp: 5 },
+        { regDate: '2026-01-29', project: 'APOLLO-D SF3-17462', order: 'PS26A22071', vendor: '프로텍', item: 'CCB-84901-2001-07', targetQty: 3, inQty: 0, remark: '', timestamp: 6 },
+        { regDate: '2026-01-29', project: 'APOLLO-D(TL)', order: 'PS26A23034', vendor: '프로텍', item: 'PIEZO 7.5M', targetQty: 4, inQty: 0, remark: '', timestamp: 7 },
+        { regDate: '2026-01-29', project: 'APOLLO-D(TL)', order: 'PS26A23034', vendor: '프로텍', item: 'CL-C5 5M', targetQty: 4, inQty: 0, remark: '', timestamp: 8 },
+        { regDate: '2026-01-29', project: 'APOLLO-D(TL)', order: 'PS26A23034', vendor: '프로텍', item: 'CL-P030', targetQty: 4, inQty: 0, remark: '', timestamp: 9 },
+        { regDate: '2026-01-29', project: 'APOLLO-D(TL)', order: 'PS26A23034', vendor: '프로텍', item: 'CCB-84901-2001-07', targetQty: 2, inQty: 0, remark: '', timestamp: 10 },
+        { regDate: '2026-01-29', project: 'APOLLO-D(TL)', order: 'PS26A23034', vendor: '프로텍', item: 'CCB-PWRIO-07', targetQty: 2, inQty: 0, remark: '', timestamp: 11 },
+        { regDate: '2026-01-29', project: 'APOLLO-D(TL)', order: 'PS26A23034', vendor: '프로텍', item: 'OP-88412 10m', targetQty: 4, inQty: 0, remark: '', timestamp: 12 },
+        { regDate: '2026-01-29', project: 'A030-98401A', order: '-', vendor: '한주하이텍', item: '634265-15', targetQty: 2, inQty: 0, remark: '', timestamp: 13 }
+    ];
+
+    document.getElementById('pRegDate').value = new Date().toISOString().split('T')[0];
+
+    async function loadData() {
+        try {
+            const response = await fetch(DB_PATH);
+            const data = await response.json();
+            
+            // 만약 서버 데이터가 비어있다면 복구용 데이터를 강제로 밀어넣음
+            if (!data || Object.keys(data).length === 0) {
+                console.log("초기 데이터 복구 중...");
+                inventory = recoveryData;
+                await saveData();
+            } else {
+                inventory = Object.values(data);
+            }
+            
+            render();
+            document.getElementById('syncStatus').innerText = "● 실시간 동기화 중";
+        } catch (e) {
+            document.getElementById('syncStatus').innerText = "○ 서버 연결 오류";
+        }
+    }
+
+    async function saveData() {
+        await fetch(DB_PATH, {
+            method: 'PUT',
+            body: JSON.stringify(inventory)
+        });
+        loadData();
+    }
+
+    async function addItem() {
+        const item = {
+            regDate: document.getElementById('pRegDate').value,
+            project: document.getElementById('pName').value,
+            order: document.getElementById('pOrder').value,
+            vendor: document.getElementById('pVendor').value,
+            item: document.getElementById('pItem').value,
+            targetQty: parseInt(document.getElementById('pTargetQty').value) || 0,
+            inQty: parseInt(document.getElementById('pInQty').value) || 0,
+            remark: document.getElementById('pRemark').value,
+            timestamp: Date.now()
+        };
+        if(!item.project || !item.item) return alert("필수 정보를 입력하세요.");
+        inventory.push(item);
+        await saveData();
+        document.getElementById('pItem').value = '';
+    }
+
+    function editCell(idx, field, element) {
+        if (element.querySelector('input')) return;
+        const input = document.createElement('input');
+        input.type = field.includes('Qty') ? 'number' : (field === 'regDate' ? 'date' : 'text');
+        input.value = inventory[idx][field];
+        input.className = 'edit-input';
+        element.innerHTML = '';
+        element.appendChild(input);
+        input.focus();
+        input.onblur = async function() {
+            inventory[idx][field] = field.includes('Qty') ? (parseInt(input.value) || 0) : input.value;
+            await saveData();
+        };
+    }
+
+    function copyRow(idx) {
+        const item = inventory[idx];
+        document.getElementById('pRegDate').value = item.regDate;
+        document.getElementById('pName').value = item.project;
+        document.getElementById('pOrder').value = item.order;
+        document.getElementById('pVendor').value = item.vendor;
+        document.getElementById('pItem').value = item.item;
+        document.getElementById('pTargetQty').value = item.targetQty;
+        document.getElementById('pInQty').value = 0;
+        document.getElementById('pRemark').value = item.remark || "";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function render() {
+        const body = document.getElementById('tableBody');
+        const vFilter = document.getElementById('searchVendor').value.toLowerCase();
+        const iFilter = document.getElementById('searchItem').value.toLowerCase();
+        body.innerHTML = '';
+        
+        // 정렬
+        const sortedList = [...inventory].sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+        sortedList.forEach((item) => {
+            const originalIdx = inventory.indexOf(item);
+            if(item.vendor.toLowerCase().includes(vFilter) && (item.item.toLowerCase().includes(iFilter) || item.project.toLowerCase().includes(iFilter))) {
+                const rem = item.targetQty - item.inQty;
+                const statusText = item.inQty === 0 ? '미입고' : (rem > 0 ? `부분(${rem})` : '완료');
+                const statusClass = item.inQty === 0 ? 'status-none' : (rem > 0 ? 'status-part' : 'status-full');
+
+                body.innerHTML += `
+                    <tr>
+                        <td class="editable" onclick="editCell(${originalIdx}, 'regDate', this)">${item.regDate}</td>
+                        <td style="text-align:left; padding-left:15px;">
+                            <span class="editable" onclick="editCell(${originalIdx}, 'project', this)">${item.project}</span>
+                            <button class="btn-copy" onclick="copyRow(${originalIdx})">복사</button>
+                        </td>
+                        <td class="editable" onclick="editCell(${originalIdx}, 'order', this)">${item.order}</td>
+                        <td class="editable" onclick="editCell(${originalIdx}, 'vendor', this)">${item.vendor}</td>
+                        <td class="editable" onclick="editCell(${originalIdx}, 'item', this)">${item.item}</td>
+                        <td class="editable" onclick="editCell(${originalIdx}, 'targetQty', this)">${item.targetQty}</td>
+                        <td class="editable" onclick="editCell(${originalIdx}, 'inQty', this)" style="color:var(--primary); font-weight:bold;">${item.inQty}</td>
+                        <td style="color:var(--warn); font-weight:bold;">${rem > 0 ? rem : '-'}</td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td class="editable" onclick="editCell(${originalIdx}, 'remark', this)">${item.remark || '-'}</td>
+                        <td><button class="btn btn-delete" onclick="deleteItem(${originalIdx})">삭제</button></td>
+                    </tr>
+                `;
+            }
+        });
+    }
+
+    async function deleteItem(idx) { if(confirm("삭제하시겠습니까?")) { inventory.splice(idx, 1); await saveData(); } }
+
+    function exportCSV() {
+        let csv = "\uFEFF등록일자,프로젝트,발주번호,업체명,자재명,필요수량,입고수량,잔여,상태,비고\n";
+        inventory.forEach(item => {
+            const rem = item.targetQty - item.inQty;
+            csv += `"${item.regDate}","${item.project}","${item.order}","${item.vendor}","${item.item}",${item.targetQty},${item.inQty},${rem},"${item.inQty===0?'미입고':(rem>0?'부분입고':'완료')}","${item.remark}"\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `사급관리_현황.csv`;
+        a.click();
+    }
+
+    loadData();
+    setInterval(loadData, 5000); // 5초 자동 갱신
+</script>
+</body>
+</html>
