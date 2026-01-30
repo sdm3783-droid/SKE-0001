@@ -11,10 +11,11 @@
         
         /* 대시보드 스타일 */
         .dashboard { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; }
-        .dash-card { min-width: 220px; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; cursor: pointer; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .dash-card:hover { transform: translateY(-5px); border-color: var(--primary); }
-        .dash-title { font-size: 13px; font-weight: bold; color: #64748b; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .dash-stats { font-size: 18px; font-weight: 800; display: flex; justify-content: space-between; align-items: center; }
+        .dash-card { min-width: 240px; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; cursor: pointer; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .dash-card:hover { transform: translateY(-5px); border-color: var(--primary); background: #f8fafc; }
+        .dash-month { font-size: 10px; font-weight: bold; color: var(--primary); background: #eff6ff; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 5px; }
+        .dash-title { font-size: 13px; font-weight: bold; color: #1e293b; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dash-stats { font-size: 16px; font-weight: 800; display: flex; justify-content: space-between; align-items: center; }
         .dash-progress { font-size: 11px; color: var(--success); background: #dcfce7; padding: 2px 8px; border-radius: 10px; }
 
         /* 입력부/검색부 스타일 */
@@ -53,8 +54,7 @@
 <div class="container">
     <h2>📊 사급자재 통합 관리 시스템 <span id="syncStatus">● 연결 확인 중...</span></h2>
 
-    <div id="dashboard" class="dashboard">
-        </div>
+    <div id="dashboard" class="dashboard"></div>
 
     <div class="input-section">
         <div class="input-grid">
@@ -129,34 +129,39 @@
         }
     }
 
-    // 대시보드 업데이트 (프로젝트별 요약)
+    // 대시보드 업데이트 (월별 + 프로젝트별 요약)
     function updateDashboard() {
         const dash = document.getElementById('dashboard');
-        const projectMap = {};
+        const groupMap = {};
 
-        // 데이터를 프로젝트별로 분류
         inventory.forEach(item => {
-            if (!projectMap[item.project]) {
-                projectMap[item.project] = { total: 0, completed: 0 };
+            const [y, m] = item.regDate.split('-');
+            const groupKey = `${y}-${m} | ${item.project}`; // 키를 월+프로젝트로 생성
+            
+            if (!groupMap[groupKey]) {
+                groupMap[groupKey] = { total: 0, completed: 0, year: y, month: m, project: item.project };
             }
-            projectMap[item.project].total++;
+            groupMap[groupKey].total++;
             if (item.targetQty > 0 && item.inQty >= item.targetQty) {
-                projectMap[item.project].completed++;
+                groupMap[groupKey].completed++;
             }
         });
 
         dash.innerHTML = '';
-        Object.keys(projectMap).forEach(pName => {
-            const stats = projectMap[pName];
-            const percent = Math.round((stats.completed / stats.total) * 100);
+        // 최신 월 순으로 정렬하여 대시보드 표시
+        const sortedKeys = Object.keys(groupMap).sort().reverse();
+
+        sortedKeys.forEach(key => {
+            const info = groupMap[key];
+            const percent = Math.round((info.completed / info.total) * 100);
             const isFull = percent === 100;
             
-            // 미완료 항목이 있는 것 위주로 강조하기 위해 필터링하거나 순서 조정 가능
             dash.innerHTML += `
-                <div class="dash-card" onclick="filterByProject('${pName}')">
-                    <div class="dash-title" title="${pName}">${pName}</div>
+                <div class="dash-card" onclick="quickFilter('${info.year}', '${info.month}', '${info.project}')">
+                    <div class="dash-month">${info.year}년 ${info.month}월</div>
+                    <div class="dash-title" title="${info.project}">${info.project}</div>
                     <div class="dash-stats">
-                        <span>${stats.completed} / ${stats.total}</span>
+                        <span>${info.completed} / ${info.total} <small style="font-size:10px; color:#94a3b8;">품목</small></span>
                         <span class="dash-progress" style="background:${isFull?'#dcfce7':'#fff7ed'}; color:${isFull?'#166534':'#c2410c'};">
                             ${percent}%
                         </span>
@@ -166,7 +171,10 @@
         });
     }
 
-    function filterByProject(pName) {
+    // 대시보드 클릭 시 연도, 월, 프로젝트 필터를 한꺼번에 적용
+    function quickFilter(year, month, pName) {
+        document.getElementById('filterYear').value = year;
+        document.getElementById('filterMonth').value = month;
         document.getElementById('searchItem').value = pName;
         render();
     }
