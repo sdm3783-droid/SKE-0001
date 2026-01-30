@@ -13,7 +13,7 @@
         .input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; background: #f8fafc; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
         .field { display: flex; flex-direction: column; gap: 5px; }
         label { font-size: 11px; font-weight: bold; color: #64748b; }
-        input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        input, select { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
         
         .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
         .btn-add { background: var(--primary); color: white; grid-column: 1 / -1; }
@@ -21,11 +21,12 @@
         .btn-delete { background: none; color: #94a3b8; font-size: 11px; }
         .btn-copy { background: #e2e8f0; color: #475569; padding: 2px 6px; font-size: 10px; margin-left: 5px; border-radius: 4px; border: 1px solid #cbd5e1; }
 
-        .search-container { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; background: #eff6ff; padding: 15px; border-radius: 8px; border: 1px solid #dbeafe; }
-        .search-input { padding: 8px; width: 180px; border: 1px solid #cbd5e1; border-radius: 6px; }
+        .search-container { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; background: #eff6ff; padding: 15px; border-radius: 8px; border: 1px solid #dbeafe; flex-wrap: wrap; }
+        .search-box { display: flex; align-items: center; gap: 8px; }
+        .search-input { padding: 8px; width: 150px; border: 1px solid #cbd5e1; border-radius: 6px; }
 
         table { width: 100%; border-collapse: collapse; }
-        th { background: #f1f5f9; color: #475569; padding: 12px 10px; font-size: 12px; border-bottom: 2px solid #e2e8f0; }
+        th { background: #f1f5f9; color: #475569; padding: 12px 10px; font-size: 12px; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; }
         td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-size: 13px; }
         
         .editable { cursor: pointer; border-radius: 4px; padding: 2px 5px; }
@@ -59,8 +60,19 @@
     </div>
 
     <div class="search-container">
-        <div class="search-box"><label>🏢 업체명 </label><input type="text" id="searchVendor" onkeyup="render()" class="search-input"></div>
-        <div class="search-box"><label>🔍 자재/프로젝트 </label><input type="text" id="searchItem" onkeyup="render()" class="search-input"></div>
+        <div class="search-box">
+            <label>📅 기간 필터</label>
+            <select id="filterYear" onchange="render()" class="search-input" style="width: 100px;"></select>
+            <select id="filterMonth" onchange="render()" class="search-input" style="width: 80px;">
+                <option value="all">전체 월</option>
+                <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
+                <option value="04">4월</option><option value="05">5월</option><option value="06">6월</option>
+                <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
+                <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+            </select>
+        </div>
+        <div class="search-box"><label>🏢 업체 </label><input type="text" id="searchVendor" onkeyup="render()" class="search-input" placeholder="업체명 검색"></div>
+        <div class="search-box"><label>🔍 검색 </label><input type="text" id="searchItem" onkeyup="render()" class="search-input" placeholder="자재/프로젝트"></div>
         <div style="flex-grow: 1; text-align: right;"><button class="btn btn-excel" onclick="exportCSV()">엑셀 저장</button></div>
     </div>
 
@@ -85,50 +97,45 @@
 </div>
 
 <script>
-    // ⚠️ 본인의 Firebase URL을 꼭 확인하세요!
     const DATABASE_URL = "https://ske-0001-default-rtdb.firebaseio.com/"; 
     const DB_PATH = DATABASE_URL + "inventory.json";
 
     let inventory = [];
 
-    // [복구용 데이터] 이미지 자료를 그대로 옮겼습니다.
-    const recoveryData = [
-        { regDate: '2026-01-29', project: 'APOLLO-D(SF3-17463)', order: 'PS26A22071', vendor: '프로텍', item: 'LK-GC10', targetQty: 3, inQty: 0, remark: '', timestamp: 1 },
-        { regDate: '2026-01-29', project: 'APOLLO-D(SF3-17463)', order: 'PS26A22071', vendor: '프로텍', item: 'PIEZO 7M', targetQty: 3, inQty: 0, remark: '', timestamp: 2 },
-        { regDate: '2026-01-29', project: 'APOLLO-D SF3-17462', order: 'PS26A22071', vendor: '프로텍', item: 'LK-GC10', targetQty: 3, inQty: 0, remark: '', timestamp: 3 },
-        { regDate: '2026-01-29', project: 'APOLLO-D SF3-17462', order: 'PS26A22071', vendor: '프로텍', item: 'PIEZO 7M', targetQty: 3, inQty: 0, remark: '', timestamp: 4 },
-        { regDate: '2026-01-29', project: 'APOLLO-D SF3-17462', order: 'PS26A22071', vendor: '프로텍', item: 'CCB-PWRIO-07', targetQty: 3, inQty: 0, remark: '', timestamp: 5 },
-        { regDate: '2026-01-29', project: 'APOLLO-D SF3-17462', order: 'PS26A22071', vendor: '프로텍', item: 'CCB-84901-2001-07', targetQty: 3, inQty: 0, remark: '', timestamp: 6 },
-        { regDate: '2026-01-29', project: 'APOLLO-D(TL)', order: 'PS26A23034', vendor: '프로텍', item: 'PIEZO 7.5M', targetQty: 4, inQty: 0, remark: '', timestamp: 7 },
-        { regDate: '2026-01-29', project: 'APOLLO-D(TL)', order: 'PS26A23034', vendor: '프로텍', item: 'CL-C5 5M', targetQty: 4, inQty: 0, remark: '', timestamp: 8 },
-        { regDate: '2026-01-29', project: 'APOLLO-D(TL)', order: 'PS26A23034', vendor: '프로텍', item: 'CL-P030', targetQty: 4, inQty: 0, remark: '', timestamp: 9 },
-        { regDate: '2026-01-29', project: 'APOLLO-D(TL)', order: 'PS26A23034', vendor: '프로텍', item: 'CCB-84901-2001-07', targetQty: 2, inQty: 0, remark: '', timestamp: 10 },
-        { regDate: '2026-01-29', project: 'APOLLO-D(TL)', order: 'PS26A23034', vendor: '프로텍', item: 'CCB-PWRIO-07', targetQty: 2, inQty: 0, remark: '', timestamp: 11 },
-        { regDate: '2026-01-29', project: 'APOLLO-D(TL)', order: 'PS26A23034', vendor: '프로텍', item: 'OP-88412 10m', targetQty: 4, inQty: 0, remark: '', timestamp: 12 },
-        { regDate: '2026-01-29', project: 'A030-98401A', order: '-', vendor: '한주하이텍', item: '634265-15', targetQty: 2, inQty: 0, remark: '', timestamp: 13 }
-    ];
-
+    // 페이지 로드 시 초기 세팅
     document.getElementById('pRegDate').value = new Date().toISOString().split('T')[0];
 
     async function loadData() {
         try {
             const response = await fetch(DB_PATH);
             const data = await response.json();
+            inventory = data ? Object.values(data) : [];
             
-            // 만약 서버 데이터가 비어있다면 복구용 데이터를 강제로 밀어넣음
-            if (!data || Object.keys(data).length === 0) {
-                console.log("초기 데이터 복구 중...");
-                inventory = recoveryData;
-                await saveData();
-            } else {
-                inventory = Object.values(data);
-            }
-            
+            updateFilterOptions(); // 필터 옵션 갱신
             render();
             document.getElementById('syncStatus').innerText = "● 실시간 동기화 중";
         } catch (e) {
             document.getElementById('syncStatus').innerText = "○ 서버 연결 오류";
         }
+    }
+
+    // 데이터에 있는 연도를 중복없이 추출하여 필터에 넣어줌
+    function updateFilterOptions() {
+        const yearSelect = document.getElementById('filterYear');
+        const currentYear = new Date().getFullYear();
+        const years = [...new Set(inventory.map(item => item.regDate.split('-')[0]))];
+        
+        if (years.length === 0) years.push(currentYear.toString());
+        years.sort((a, b) => b - a);
+
+        const prevValue = yearSelect.value;
+        yearSelect.innerHTML = '<option value="all">전체 연도</option>';
+        years.forEach(y => {
+            yearSelect.innerHTML += `<option value="${y}">${y}년</option>`;
+        });
+        
+        if (prevValue) yearSelect.value = prevValue;
+        else yearSelect.value = currentYear; // 기본값은 현재 연도
     }
 
     async function saveData() {
@@ -189,14 +196,28 @@
         const body = document.getElementById('tableBody');
         const vFilter = document.getElementById('searchVendor').value.toLowerCase();
         const iFilter = document.getElementById('searchItem').value.toLowerCase();
+        const yearFilter = document.getElementById('filterYear').value;
+        const monthFilter = document.getElementById('filterMonth').value;
+
         body.innerHTML = '';
         
-        // 정렬
-        const sortedList = [...inventory].sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+        // 정렬: 최신 등록순 및 최신 날짜순
+        const sortedList = [...inventory].sort((a,b) => {
+            if(b.regDate !== a.regDate) return b.regDate.localeCompare(a.regDate);
+            return (b.timestamp || 0) - (a.timestamp || 0);
+        });
 
         sortedList.forEach((item) => {
             const originalIdx = inventory.indexOf(item);
-            if(item.vendor.toLowerCase().includes(vFilter) && (item.item.toLowerCase().includes(iFilter) || item.project.toLowerCase().includes(iFilter))) {
+            const [y, m, d] = item.regDate.split('-');
+
+            // 필터링 조건
+            const matchYear = (yearFilter === 'all' || y === yearFilter);
+            const matchMonth = (monthFilter === 'all' || m === monthFilter);
+            const matchVendor = item.vendor.toLowerCase().includes(vFilter);
+            const matchItem = item.item.toLowerCase().includes(iFilter) || item.project.toLowerCase().includes(iFilter);
+
+            if(matchYear && matchMonth && matchVendor && matchItem) {
                 const rem = item.targetQty - item.inQty;
                 const statusText = item.inQty === 0 ? '미입고' : (rem > 0 ? `부분(${rem})` : '완료');
                 const statusClass = item.inQty === 0 ? 'status-none' : (rem > 0 ? 'status-part' : 'status-full');
@@ -234,12 +255,12 @@
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `사급관리_현황.csv`;
+        a.download = `사급관리_현황_${new Date().toLocaleDateString()}.csv`;
         a.click();
     }
 
     loadData();
-    setInterval(loadData, 5000); // 5초 자동 갱신
+    setInterval(loadData, 10000); // 자동 갱신 주기를 10초로 약간 늦춰 부하를 줄였습니다.
 </script>
 </body>
 </html>
