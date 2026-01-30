@@ -9,7 +9,15 @@
         .container { max-width: 1700px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { margin-top: 0; color: var(--primary); border-left: 6px solid var(--primary); padding-left: 15px; margin-bottom: 20px; }
         
-        /* 입력부 스타일 */
+        /* 대시보드 스타일 */
+        .dashboard { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; }
+        .dash-card { min-width: 220px; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; cursor: pointer; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .dash-card:hover { transform: translateY(-5px); border-color: var(--primary); }
+        .dash-title { font-size: 13px; font-weight: bold; color: #64748b; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dash-stats { font-size: 18px; font-weight: 800; display: flex; justify-content: space-between; align-items: center; }
+        .dash-progress { font-size: 11px; color: var(--success); background: #dcfce7; padding: 2px 8px; border-radius: 10px; }
+
+        /* 입력부/검색부 스타일 */
         .input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; background: #f8fafc; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
         .field { display: flex; flex-direction: column; gap: 5px; }
         label { font-size: 11px; font-weight: bold; color: #64748b; }
@@ -45,6 +53,9 @@
 <div class="container">
     <h2>📊 사급자재 통합 관리 시스템 <span id="syncStatus">● 연결 확인 중...</span></h2>
 
+    <div id="dashboard" class="dashboard">
+        </div>
+
     <div class="input-section">
         <div class="input-grid">
             <div class="field"><label>등록일자</label><input type="date" id="pRegDate"></div>
@@ -61,10 +72,10 @@
 
     <div class="search-container">
         <div class="search-box">
-            <label>📅 기간 필터</label>
+            <label>📅 기간</label>
             <select id="filterYear" onchange="render()" class="search-input" style="width: 100px;"></select>
             <select id="filterMonth" onchange="render()" class="search-input" style="width: 80px;">
-                <option value="all">전체 월</option>
+                <option value="all">전체</option>
                 <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
                 <option value="04">4월</option><option value="05">5월</option><option value="06">6월</option>
                 <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
@@ -102,7 +113,6 @@
 
     let inventory = [];
 
-    // 페이지 로드 시 초기 세팅
     document.getElementById('pRegDate').value = new Date().toISOString().split('T')[0];
 
     async function loadData() {
@@ -110,8 +120,8 @@
             const response = await fetch(DB_PATH);
             const data = await response.json();
             inventory = data ? Object.values(data) : [];
-            
-            updateFilterOptions(); // 필터 옵션 갱신
+            updateFilterOptions();
+            updateDashboard();
             render();
             document.getElementById('syncStatus').innerText = "● 실시간 동기화 중";
         } catch (e) {
@@ -119,30 +129,63 @@
         }
     }
 
-    // 데이터에 있는 연도를 중복없이 추출하여 필터에 넣어줌
+    // 대시보드 업데이트 (프로젝트별 요약)
+    function updateDashboard() {
+        const dash = document.getElementById('dashboard');
+        const projectMap = {};
+
+        // 데이터를 프로젝트별로 분류
+        inventory.forEach(item => {
+            if (!projectMap[item.project]) {
+                projectMap[item.project] = { total: 0, completed: 0 };
+            }
+            projectMap[item.project].total++;
+            if (item.targetQty > 0 && item.inQty >= item.targetQty) {
+                projectMap[item.project].completed++;
+            }
+        });
+
+        dash.innerHTML = '';
+        Object.keys(projectMap).forEach(pName => {
+            const stats = projectMap[pName];
+            const percent = Math.round((stats.completed / stats.total) * 100);
+            const isFull = percent === 100;
+            
+            // 미완료 항목이 있는 것 위주로 강조하기 위해 필터링하거나 순서 조정 가능
+            dash.innerHTML += `
+                <div class="dash-card" onclick="filterByProject('${pName}')">
+                    <div class="dash-title" title="${pName}">${pName}</div>
+                    <div class="dash-stats">
+                        <span>${stats.completed} / ${stats.total}</span>
+                        <span class="dash-progress" style="background:${isFull?'#dcfce7':'#fff7ed'}; color:${isFull?'#166534':'#c2410c'};">
+                            ${percent}%
+                        </span>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function filterByProject(pName) {
+        document.getElementById('searchItem').value = pName;
+        render();
+    }
+
     function updateFilterOptions() {
         const yearSelect = document.getElementById('filterYear');
         const currentYear = new Date().getFullYear();
         const years = [...new Set(inventory.map(item => item.regDate.split('-')[0]))];
-        
         if (years.length === 0) years.push(currentYear.toString());
         years.sort((a, b) => b - a);
-
         const prevValue = yearSelect.value;
         yearSelect.innerHTML = '<option value="all">전체 연도</option>';
-        years.forEach(y => {
-            yearSelect.innerHTML += `<option value="${y}">${y}년</option>`;
-        });
-        
+        years.forEach(y => { yearSelect.innerHTML += `<option value="${y}">${y}년</option>`; });
         if (prevValue) yearSelect.value = prevValue;
-        else yearSelect.value = currentYear; // 기본값은 현재 연도
+        else yearSelect.value = currentYear;
     }
 
     async function saveData() {
-        await fetch(DB_PATH, {
-            method: 'PUT',
-            body: JSON.stringify(inventory)
-        });
+        await fetch(DB_PATH, { method: 'PUT', body: JSON.stringify(inventory) });
         loadData();
     }
 
@@ -161,7 +204,6 @@
         if(!item.project || !item.item) return alert("필수 정보를 입력하세요.");
         inventory.push(item);
         await saveData();
-        document.getElementById('pItem').value = '';
     }
 
     function editCell(idx, field, element) {
@@ -198,10 +240,8 @@
         const iFilter = document.getElementById('searchItem').value.toLowerCase();
         const yearFilter = document.getElementById('filterYear').value;
         const monthFilter = document.getElementById('filterMonth').value;
-
         body.innerHTML = '';
         
-        // 정렬: 최신 등록순 및 최신 날짜순
         const sortedList = [...inventory].sort((a,b) => {
             if(b.regDate !== a.regDate) return b.regDate.localeCompare(a.regDate);
             return (b.timestamp || 0) - (a.timestamp || 0);
@@ -210,8 +250,6 @@
         sortedList.forEach((item) => {
             const originalIdx = inventory.indexOf(item);
             const [y, m, d] = item.regDate.split('-');
-
-            // 필터링 조건
             const matchYear = (yearFilter === 'all' || y === yearFilter);
             const matchMonth = (monthFilter === 'all' || m === monthFilter);
             const matchVendor = item.vendor.toLowerCase().includes(vFilter);
@@ -221,7 +259,6 @@
                 const rem = item.targetQty - item.inQty;
                 const statusText = item.inQty === 0 ? '미입고' : (rem > 0 ? `부분(${rem})` : '완료');
                 const statusClass = item.inQty === 0 ? 'status-none' : (rem > 0 ? 'status-part' : 'status-full');
-
                 body.innerHTML += `
                     <tr>
                         <td class="editable" onclick="editCell(${originalIdx}, 'regDate', this)">${item.regDate}</td>
@@ -255,12 +292,12 @@
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `사급관리_현황_${new Date().toLocaleDateString()}.csv`;
+        a.download = `현황_${new Date().toISOString().slice(0,10)}.csv`;
         a.click();
     }
 
     loadData();
-    setInterval(loadData, 10000); // 자동 갱신 주기를 10초로 약간 늦춰 부하를 줄였습니다.
+    setInterval(loadData, 15000); 
 </script>
 </body>
 </html>
