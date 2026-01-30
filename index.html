@@ -2,54 +2,57 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>사급자재 통합 관리 시스템 (업체별 대시보드)</title>
+    <title>사급자재 통합 관리 시스템 (입고지연 강조형)</title>
     <style>
-        :root { --primary: #1e40af; --bg: #f1f5f9; --warn: #dc2626; --part: #d97706; --success: #059669; --vendor-bg: #f8fafc; }
+        :root { --primary: #1e40af; --bg: #f1f5f9; --warn: #dc2626; --part: #d97706; --success: #059669; --delay-bg: #fff7ed; --delay-border: #fb923c; }
         body { font-family: 'Pretendard', sans-serif; background: var(--bg); padding: 20px; color: #1e293b; }
         .container { max-width: 1700px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { margin-top: 0; color: var(--primary); border-left: 6px solid var(--primary); padding-left: 15px; margin-bottom: 20px; }
         
-        /* 업체별 대시보드 스타일 */
-        .dashboard-label { font-size: 14px; font-weight: bold; color: #475569; margin-bottom: 10px; display: block; }
-        .dashboard { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; margin-bottom: 25px; border-bottom: 2px solid #f1f5f9; pb: 15px; }
-        .dash-card { min-width: 260px; background: var(--vendor-bg); border: 2px solid #e2e8f0; border-radius: 12px; padding: 18px; cursor: pointer; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .dash-card:hover { transform: translateY(-5px); border-color: var(--primary); background: #fff; box-shadow: 0 8px 20px rgba(30, 64, 175, 0.1); }
+        /* 업체별 대시보드 */
+        .dashboard { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; margin-bottom: 25px; border-bottom: 2px solid #f1f5f9; }
+        .dash-card { min-width: 260px; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 18px; cursor: pointer; transition: 0.3s; position: relative; }
+        .dash-card:hover { transform: translateY(-5px); border-color: var(--primary); background: #fff; }
         .dash-vendor-tag { font-size: 10px; font-weight: bold; color: white; background: var(--primary); padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 8px; }
         .dash-title { font-size: 15px; font-weight: 800; color: #1e293b; margin-bottom: 10px; }
         .dash-stats-row { display: flex; justify-content: space-between; align-items: flex-end; }
-        .dash-info { font-size: 12px; color: #64748b; }
         .dash-percent { font-size: 20px; font-weight: 900; color: var(--primary); }
         .dash-progress-bar { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 10px; overflow: hidden; }
-        .dash-progress-fill { height: 100%; background: var(--primary); transition: width 0.5s ease-out; }
+        .dash-progress-fill { height: 100%; background: var(--primary); transition: width 0.5s; }
+        .delay-indicator { position: absolute; top: 10px; right: 10px; font-size: 10px; color: var(--warn); font-weight: bold; background: #fee2e2; padding: 2px 6px; border-radius: 4px; }
 
-        /* 입력/검색 스타일 (기존 유지) */
+        /* 입력/검색부 */
         .input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; background: #f8fafc; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
         .field { display: flex; flex-direction: column; gap: 5px; }
         label { font-size: 11px; font-weight: bold; color: #64748b; }
         input, select { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
         
-        .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-add { background: var(--primary); color: white; grid-column: 1 / -1; }
         .btn-excel { background: #059669; color: white; }
         .btn-delete { background: none; color: #94a3b8; font-size: 11px; }
         .btn-copy { background: #e2e8f0; color: #475569; padding: 2px 6px; font-size: 10px; margin-left: 5px; border-radius: 4px; border: 1px solid #cbd5e1; }
 
-        .search-container { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; background: #eff6ff; padding: 15px; border-radius: 8px; border: 1px solid #dbeafe; flex-wrap: wrap; }
-        .search-box { display: flex; align-items: center; gap: 8px; }
+        .search-container { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; background: #eff6ff; padding: 15px; border-radius: 8px; border: 1px solid #dbeafe; }
         .search-input { padding: 8px; width: 150px; border: 1px solid #cbd5e1; border-radius: 6px; }
 
+        /* 테이블 지연 강조 스타일 */
         table { width: 100%; border-collapse: collapse; }
         th { background: #f1f5f9; color: #475569; padding: 12px 10px; font-size: 12px; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 10; }
         td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-size: 13px; }
         
-        .editable { cursor: pointer; border-radius: 4px; padding: 2px 5px; }
-        .editable:hover { background: #fff9c4; }
-        .edit-input { width: 90%; padding: 4px; border: 2px solid var(--primary); border-radius: 4px; text-align: center; font-size: 13px; }
+        .tr-delay { background-color: var(--delay-bg) !important; border-left: 4px solid var(--delay-border); }
+        .tr-delay:hover { background-color: #ffedd5 !important; }
 
         .status-badge { padding: 4px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
         .status-none { background: #fee2e2; color: #991b1b; }
         .status-part { background: #fef3c7; color: #92400e; }
         .status-full { background: #dcfce7; color: #166534; }
+        .status-delay { background: var(--warn); color: white; border-radius: 4px; padding: 2px 5px; margin-right: 4px; }
+        
+        .editable { cursor: pointer; border-radius: 4px; padding: 2px 5px; }
+        .editable:hover { background: #fff9c4; }
+        .edit-input { width: 90%; padding: 4px; border: 2px solid var(--primary); border-radius: 4px; text-align: center; font-size: 13px; }
         #syncStatus { font-size: 12px; color: var(--success); margin-left: 10px; }
     </style>
 </head>
@@ -58,7 +61,6 @@
 <div class="container">
     <h2>🏢 사급자재 관리 시스템 <span id="syncStatus">● 연결 확인 중...</span></h2>
 
-    <span class="dashboard-label">📦 업체별 입고 현황 요약</span>
     <div id="dashboard" class="dashboard"></div>
 
     <div class="input-section">
@@ -71,25 +73,25 @@
             <div class="field"><label>필요수량</label><input type="number" id="pTargetQty" value="1"></div>
             <div class="field"><label>입고수량</label><input type="number" id="pInQty" value="0"></div>
             <div class="field"><label>비고</label><input type="text" id="pRemark" placeholder="비고"></div>
-            <button class="btn btn-add" onclick="addItem()">데이터 저장 후 클라우드 동기화</button>
+            <button class="btn btn-add" onclick="addItem()">데이터 저장 및 클라우드 동기화</button>
         </div>
     </div>
 
     <div class="search-container">
         <div class="search-box">
             <label>📅 기간</label>
-            <select id="filterYear" onchange="render()" class="search-input" style="width: 100px;"></select>
-            <select id="filterMonth" onchange="render()" class="search-input" style="width: 80px;">
-                <option value="all">전체</option>
+            <select id="filterYear" onchange="render()" class="search-input"></select>
+            <select id="filterMonth" onchange="render()" class="search-input">
+                <option value="all">전체 월</option>
                 <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
                 <option value="04">4월</option><option value="05">5월</option><option value="06">6월</option>
                 <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
                 <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
             </select>
         </div>
-        <div class="search-box"><label>🏢 업체 검색</label><input type="text" id="searchVendor" onkeyup="render()" class="search-input" placeholder="업체명"></div>
-        <div class="search-box"><label>🔍 통합 검색</label><input type="text" id="searchItem" onkeyup="render()" class="search-input" placeholder="프로젝트/자재"></div>
-        <div style="flex-grow: 1; text-align: right;"><button class="btn btn-excel" onclick="exportCSV()">엑셀(CSV) 내보내기</button></div>
+        <div class="search-box"><label>🏢 업체</label><input type="text" id="searchVendor" onkeyup="render()" class="search-input"></div>
+        <div class="search-box"><label>🔍 검색</label><input type="text" id="searchItem" onkeyup="render()" class="search-input"></div>
+        <div style="flex-grow: 1; text-align: right;"><button class="btn btn-excel" onclick="exportCSV()">엑셀 저장</button></div>
     </div>
 
     <table>
@@ -113,7 +115,6 @@
 </div>
 
 <script>
-    // 본인의 Firebase URL로 교체 확인 필수
     const DATABASE_URL = "https://ske-0001-default-rtdb.firebaseio.com/"; 
     const DB_PATH = DATABASE_URL + "inventory.json";
 
@@ -135,38 +136,43 @@
         }
     }
 
-    // 업체별 대시보드 업데이트
+    // 날짜 차이 계산 함수 (지연 확인용)
+    function getDaysDiff(regDate) {
+        const today = new Date();
+        const start = new Date(regDate);
+        const diff = today - start;
+        return Math.floor(diff / (1000 * 60 * 60 * 24));
+    }
+
     function updateDashboard() {
         const dash = document.getElementById('dashboard');
         const vendorMap = {};
 
         inventory.forEach(item => {
             if (!vendorMap[item.vendor]) {
-                vendorMap[item.vendor] = { total: 0, completed: 0, projects: new Set() };
+                vendorMap[item.vendor] = { total: 0, completed: 0, delayCount: 0 };
             }
             vendorMap[item.vendor].total++;
-            vendorMap[item.vendor].projects.add(item.project);
             if (item.targetQty > 0 && item.inQty >= item.targetQty) {
                 vendorMap[item.vendor].completed++;
+            } else if (getDaysDiff(item.regDate) >= 7) {
+                vendorMap[item.vendor].delayCount++; // 7일 이상 미입고 시 지연 카운트
             }
         });
 
         dash.innerHTML = '';
-        const sortedVendors = Object.keys(vendorMap).sort();
-
-        sortedVendors.forEach(vName => {
+        Object.keys(vendorMap).sort().forEach(vName => {
             const info = vendorMap[vName];
             const percent = Math.round((info.completed / info.total) * 100);
+            const delayTag = info.delayCount > 0 ? `<div class="delay-indicator">지연 ${info.delayCount}건</div>` : '';
             
             dash.innerHTML += `
                 <div class="dash-card" onclick="filterByVendor('${vName}')">
+                    ${delayTag}
                     <div class="dash-vendor-tag">VENDOR</div>
                     <div class="dash-title">${vName}</div>
                     <div class="dash-stats-row">
-                        <div class="dash-info">
-                            프로젝트: ${info.projects.size}개<br>
-                            총 품목: ${info.completed} / ${info.total}
-                        </div>
+                        <div style="font-size:12px; color:#64748b;">전체: ${info.total} | 완료: ${info.completed}</div>
                         <div class="dash-percent">${percent}%</div>
                     </div>
                     <div class="dash-progress-bar">
@@ -179,7 +185,6 @@
 
     function filterByVendor(vName) {
         document.getElementById('searchVendor').value = vName;
-        document.getElementById('searchItem').value = '';
         render();
     }
 
@@ -212,13 +217,10 @@
             remark: document.getElementById('pRemark').value,
             timestamp: Date.now()
         };
-        if(!item.vendor || !item.item) return alert("업체명과 자재명은 필수입니다.");
+        if(!item.vendor || !item.item) return alert("필수 입력 항목 누락");
         inventory.push(item);
         await saveData();
-        // 입력 칸 초기화 (일부만)
         document.getElementById('pItem').value = '';
-        document.getElementById('pTargetQty').value = '1';
-        document.getElementById('pInQty').value = '0';
     }
 
     function editCell(idx, field, element) {
@@ -257,10 +259,7 @@
         const monthFilter = document.getElementById('filterMonth').value;
         body.innerHTML = '';
         
-        const sortedList = [...inventory].sort((a,b) => {
-            if(b.regDate !== a.regDate) return b.regDate.localeCompare(a.regDate);
-            return (b.timestamp || 0) - (a.timestamp || 0);
-        });
+        const sortedList = [...inventory].sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
 
         sortedList.forEach((item) => {
             const originalIdx = inventory.indexOf(item);
@@ -272,10 +271,14 @@
 
             if(matchYear && matchMonth && matchVendor && matchItem) {
                 const rem = item.targetQty - item.inQty;
+                const days = getDaysDiff(item.regDate);
+                const isDelayed = (rem > 0 && days >= 7);
+                
                 const statusText = item.inQty === 0 ? '미입고' : (rem > 0 ? `부분(${rem})` : '완료');
                 const statusClass = item.inQty === 0 ? 'status-none' : (rem > 0 ? 'status-part' : 'status-full');
+
                 body.innerHTML += `
-                    <tr>
+                    <tr class="${isDelayed ? 'tr-delay' : ''}">
                         <td class="editable" onclick="editCell(${originalIdx}, 'regDate', this)">${item.regDate}</td>
                         <td style="text-align:left; padding-left:15px;">
                             <span class="editable" onclick="editCell(${originalIdx}, 'project', this)">${item.project}</span>
@@ -287,7 +290,10 @@
                         <td class="editable" onclick="editCell(${originalIdx}, 'targetQty', this)">${item.targetQty}</td>
                         <td class="editable" onclick="editCell(${originalIdx}, 'inQty', this)" style="color:var(--primary); font-weight:bold;">${item.inQty}</td>
                         <td style="color:var(--warn); font-weight:bold;">${rem > 0 ? rem : '-'}</td>
-                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td>
+                            ${isDelayed ? '<span class="status-delay">⚠️ 지연</span>' : ''}
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </td>
                         <td class="editable" onclick="editCell(${originalIdx}, 'remark', this)">${item.remark || '-'}</td>
                         <td><button class="btn btn-delete" onclick="deleteItem(${originalIdx})">삭제</button></td>
                     </tr>
@@ -296,7 +302,7 @@
         });
     }
 
-    async function deleteItem(idx) { if(confirm("정말 삭제할까요?")) { inventory.splice(idx, 1); await saveData(); } }
+    async function deleteItem(idx) { if(confirm("삭제하시겠습니까?")) { inventory.splice(idx, 1); await saveData(); } }
 
     function exportCSV() {
         let csv = "\uFEFF등록일자,프로젝트,발주번호,업체명,자재명,필요수량,입고수량,잔여,상태,비고\n";
@@ -307,7 +313,7 @@
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `사급자재_현황_${new Date().toISOString().slice(0,10)}.csv`;
+        a.download = `현황_${new Date().toISOString().slice(0,10)}.csv`;
         a.click();
     }
 
