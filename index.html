@@ -2,22 +2,28 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>사급자재 통합 관리 시스템</title>
+    <title>신광전자 실시간 통합관리 시스템</title>
     <style>
         :root { --primary: #1e40af; --bg: #f1f5f9; --warn: #dc2626; --part: #d97706; --success: #059669; }
         body { font-family: 'Pretendard', sans-serif; background: var(--bg); padding: 20px; color: #1e293b; }
         .container { max-width: 1700px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { margin-top: 10px; color: var(--primary); border-left: 6px solid var(--primary); padding-left: 15px; margin-bottom: 20px; }
+        h2 { margin-top: 10px; color: var(--primary); border-left: 6px solid var(--primary); padding-left: 15px; margin-bottom: 20px; font-weight: 800; }
         
         .input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; background: #f8fafc; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
         input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
         .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-add { background: var(--primary); color: white; grid-column: 1 / -1; }
-        
+        .btn-excel { background: #059669; color: white; float: right; }
+
+        .search-container { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; background: #eff6ff; padding: 15px; border-radius: 8px; border: 1px solid #dbeafe; }
+        .search-input { padding: 8px; width: 180px; border: 1px solid #cbd5e1; border-radius: 6px; }
+
         table { width: 100%; border-collapse: collapse; }
         th { background: #f1f5f9; padding: 12px; font-size: 12px; border-bottom: 2px solid #e2e8f0; }
         td { padding: 12px; border-bottom: 1px solid #f1f5f9; text-align: center; font-size: 13px; }
         .editable:hover { background: #fff9c4; cursor: pointer; }
+        .btn-copy { background: #e2e8f0; color: #475569; padding: 2px 6px; font-size: 10px; margin-left: 5px; border-radius: 4px; border: 1px solid #cbd5e1; cursor: pointer; }
+        .status-badge { padding: 4px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -25,7 +31,7 @@
 <div class="container">
     <img src="logo.png" alt="SKE 로고" style="height: 60px; display: block; margin-bottom: 10px; margin-left: 20px;">
     
-    <h2>📊 사급자재 통합 관리 시스템 <span id="syncStatus" style="font-size:12px; color:var(--success);">● 연결됨</span></h2>
+    <h2>📊 신광전자 실시간 통합관리 시스템 <span id="syncStatus" style="font-size:12px; color:var(--success);">● 실시간 연결됨</span></h2>
 
     <div class="input-section">
         <div class="input-grid">
@@ -41,11 +47,17 @@
         </div>
     </div>
 
+    <div class="search-container">
+        <div><label style="font-size:12px; font-weight:bold;">🏢 업체명 검색: </label><input type="text" id="searchVendor" onkeyup="render()" class="search-input"></div>
+        <div><label style="font-size:12px; font-weight:bold;">🔍 프로젝트/자재 검색: </label><input type="text" id="searchItem" onkeyup="render()" class="search-input"></div>
+        <div style="flex-grow: 1;"><button class="btn btn-excel" onclick="exportCSV()">엑셀 저장</button></div>
+    </div>
+
     <table>
         <thead>
             <tr>
                 <th>등록일자</th>
-                <th>프로젝트명</th>
+                <th>프로젝트명 (복사)</th>
                 <th>발주번호</th>
                 <th>업체명</th>
                 <th>자재명</th>
@@ -68,10 +80,13 @@
     let inventory = [];
 
     async function loadData() {
-        const res = await fetch(DB_PATH);
-        const data = await res.json();
-        inventory = data ? Object.values(data) : [];
-        render();
+        try {
+            const res = await fetch(DB_PATH);
+            const data = await res.json();
+            inventory = data ? Object.values(data) : [];
+            render();
+            document.getElementById('syncStatus').innerText = "● 실시간 연결됨";
+        } catch(e) { document.getElementById('syncStatus').innerText = "○ 연결 오류"; }
     }
 
     async function saveData() {
@@ -81,23 +96,38 @@
 
     function render() {
         const body = document.getElementById('tableBody');
+        const vFilter = document.getElementById('searchVendor').value.toLowerCase();
+        const iFilter = document.getElementById('searchItem').value.toLowerCase();
         body.innerHTML = '';
-        inventory.forEach((item, idx) => {
-            const rem = item.targetQty - item.inQty;
-            body.innerHTML += `
-                <tr>
-                    <td>${item.regDate}</td>
-                    <td class="editable" onclick="editCell(${idx}, 'project', this)">${item.project}</td>
-                    <td>${item.order}</td>
-                    <td>${item.vendor}</td>
-                    <td class="editable" onclick="editCell(${idx}, 'item', this)">${item.item}</td>
-                    <td class="editable" onclick="editCell(${idx}, 'targetQty', this)">${item.targetQty}</td>
-                    <td class="editable" onclick="editCell(${idx}, 'inQty', this)">${item.inQty}</td>
-                    <td style="color:red; font-weight:bold;">${rem}</td>
-                    <td>${rem <= 0 ? '완료' : '미입고'}</td>
-                    <td class="editable" onclick="editCell(${idx}, 'remark', this)">${item.remark || '-'}</td>
-                    <td><button onclick="deleteItem(${idx})">❌</button></td>
-                </tr>`;
+        
+        const sorted = [...inventory].sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+        sorted.forEach((item) => {
+            const originIdx = inventory.indexOf(item);
+            if(item.vendor.toLowerCase().includes(vFilter) && (item.item.toLowerCase().includes(iFilter) || item.project.toLowerCase().includes(iFilter))) {
+                const rem = item.targetQty - item.inQty;
+                const statusText = rem <= 0 ? '완료' : (item.inQty > 0 ? '부분입고' : '미입고');
+                const statusColor = rem <= 0 ? '#dcfce7' : (item.inQty > 0 ? '#fef3c7' : '#fee2e2');
+                const textColor = rem <= 0 ? '#166534' : (item.inQty > 0 ? '#92400e' : '#991b1b');
+
+                body.innerHTML += `
+                    <tr>
+                        <td>${item.regDate}</td>
+                        <td style="text-align:left; padding-left:10px;">
+                            <span class="editable" onclick="editCell(${originIdx}, 'project', this)">${item.project}</span>
+                            <button class="btn-copy" onclick="copyRow(${originIdx})">복사</button>
+                        </td>
+                        <td>${item.order}</td>
+                        <td>${item.vendor}</td>
+                        <td class="editable" onclick="editCell(${originIdx}, 'item', this)">${item.item}</td>
+                        <td class="editable" onclick="editCell(${originIdx}, 'targetQty', this)">${item.targetQty}</td>
+                        <td class="editable" onclick="editCell(${originIdx}, 'inQty', this)" style="color:var(--primary); font-weight:bold;">${item.inQty}</td>
+                        <td style="color:red; font-weight:bold;">${rem > 0 ? rem : '-'}</td>
+                        <td><span class="status-badge" style="background:${statusColor}; color:${textColor};">${statusText}</span></td>
+                        <td class="editable" onclick="editCell(${originIdx}, 'remark', this)">${item.remark || '-'}</td>
+                        <td><button onclick="deleteItem(${originIdx})" style="cursor:pointer; background:none; border:none;">❌</button></td>
+                    </tr>`;
+            }
         });
     }
 
@@ -113,8 +143,10 @@
             remark: document.getElementById('pRemark').value,
             timestamp: Date.now()
         };
+        if(!item.project || !item.item) return alert("필수 정보를 입력하세요.");
         inventory.push(item);
         await saveData();
+        document.getElementById('pItem').value = '';
     }
 
     function editCell(idx, field, el) {
@@ -129,7 +161,29 @@
         await saveData();
     }
 
-    async function deleteItem(idx) { if(confirm("삭제?")) { inventory.splice(idx, 1); await saveData(); } }
+    function copyRow(idx) {
+        const item = inventory[idx];
+        document.getElementById('pName').value = item.project;
+        document.getElementById('pOrder').value = item.order;
+        document.getElementById('pVendor').value = item.vendor;
+        document.getElementById('pItem').value = item.item;
+        document.getElementById('pTargetQty').value = item.targetQty;
+    }
+
+    async function deleteItem(idx) { if(confirm("삭제하시겠습니까?")) { inventory.splice(idx, 1); await saveData(); } }
+
+    function exportCSV() {
+        let csv = "\uFEFF등록일자,프로젝트,발주번호,업체명,자재명,필요수량,입고수량,잔여,상태,비고\n";
+        inventory.forEach(item => {
+            const rem = item.targetQty - item.inQty;
+            csv += `"${item.regDate}","${item.project}","${item.order}","${item.vendor}","${item.item}",${item.targetQty},${item.inQty},${rem},"${rem<=0?'완료':'미입고'}","${item.remark}"\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `신광전자_자재현황.csv`;
+        a.click();
+    }
     
     document.getElementById('pRegDate').value = new Date().toISOString().split('T')[0];
     loadData();
