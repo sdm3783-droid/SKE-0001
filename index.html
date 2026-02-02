@@ -2,31 +2,37 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>사급자재 관리 시스템 (Gmail 연동형)</title>
+    <title>사급자재 관리 시스템 (디자인 개선)</title>
     <style>
         :root { --primary: #1e40af; --bg: #f1f5f9; --warn: #dc2626; --part: #d97706; --success: #059669; --delay-bg: #fff7ed; --delay-border: #fb923c; }
         body { font-family: 'Pretendard', sans-serif; background: var(--bg); padding: 20px; color: #1e293b; }
         .container { max-width: 1700px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { margin-top: 0; color: var(--primary); border-left: 6px solid var(--primary); padding-left: 15px; margin-bottom: 20px; }
         
-        /* 업체별 대시보드 */
-        .dashboard { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; margin-bottom: 25px; border-bottom: 2px solid #f1f5f9; }
-        .dash-card { min-width: 280px; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 18px; cursor: pointer; transition: 0.3s; position: relative; }
-        .dash-card:hover { transform: translateY(-5px); border-color: var(--primary); background: #fff; }
-        .dash-vendor-tag { font-size: 10px; font-weight: bold; color: white; background: var(--primary); padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 8px; }
-        .dash-title { font-size: 15px; font-weight: 800; color: #1e293b; margin-bottom: 10px; }
+        /* 업체별 대시보드 - 디자인 대폭 수정 */
+        .dashboard { display: flex; gap: 15px; overflow-x: auto; padding: 10px 5px; margin-bottom: 25px; border-bottom: 2px solid #f1f5f9; }
+        .dash-card { min-width: 280px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; cursor: pointer; transition: 0.3s; position: relative; display: flex; flex-direction: column; gap: 10px; }
+        .dash-card:hover { transform: translateY(-5px); border-color: var(--primary); background: #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
         
-        /* Gmail 버튼 스타일 */
-        .btn-mail { position: absolute; bottom: 15px; right: 15px; background: #ea4335; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: bold; }
-        .btn-mail:hover { background: #d33828; box-shadow: 0 2px 8px rgba(234, 67, 53, 0.3); }
+        .dash-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
+        .dash-vendor-tag { font-size: 10px; font-weight: bold; color: white; background: var(--primary); padding: 2px 8px; border-radius: 4px; }
+        
+        /* 버튼 위치 및 스타일 개선 */
+        .btn-mail { background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold; transition: 0.2s; display: flex; align-items: center; gap: 4px; border: 1px solid transparent; }
+        .btn-mail:hover { background: white; color: #ef4444; border-color: #ef4444; }
 
-        .dash-stats-row { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 10px; }
+        .dash-title { font-size: 17px; font-weight: 800; color: #1e293b; margin: 0; }
+        
+        .dash-stats-row { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
+        .dash-info { font-size: 13px; color: #64748b; font-weight: 500; }
         .dash-percent { font-size: 20px; font-weight: 900; color: var(--primary); }
-        .dash-progress-bar { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
-        .dash-progress-fill { height: 100%; background: var(--primary); transition: width 0.5s; }
-        .delay-indicator { position: absolute; top: 10px; right: 10px; font-size: 10px; color: var(--warn); font-weight: bold; background: #fee2e2; padding: 2px 6px; border-radius: 4px; }
+        
+        .dash-progress-bar { width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .dash-progress-fill { height: 100%; background: var(--primary); transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        .delay-tag { font-size: 11px; color: var(--warn); font-weight: bold; background: #fee2e2; padding: 2px 8px; border-radius: 15px; border: 1px solid #fecaca; display: inline-block; }
 
-        /* 입력/검색/테이블 스타일 */
+        /* 테이블 및 입력부 스타일 (기존 유지) */
         .input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; background: #f8fafc; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
         .field { display: flex; flex-direction: column; gap: 5px; }
         label { font-size: 11px; font-weight: bold; color: #64748b; }
@@ -70,22 +76,12 @@
             <div class="field"><label>필요수량</label><input type="number" id="pTargetQty" value="1"></div>
             <div class="field"><label>입고수량</label><input type="number" id="pInQty" value="0"></div>
             <div class="field"><label>비고</label><input type="text" id="pRemark" placeholder="비고"></div>
-            <button class="btn btn-add" onclick="addItem()">데이터 저장 및 클라우드 동기화</button>
+            <button class="btn btn-add" onclick="addItem()">저장 및 클라우드 동기화</button>
         </div>
     </div>
 
     <div class="search-container">
-        <div class="search-box">
-            <label>📅 기간</label>
-            <select id="filterYear" onchange="render()" class="search-input"></select>
-            <select id="filterMonth" onchange="render()" class="search-input">
-                <option value="all">전체 월</option>
-                <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
-                <option value="04">4월</option><option value="05">5월</option><option value="06">6월</option>
-                <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
-                <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
-            </select>
-        </div>
+        <div class="search-box"><label>📅 기간</label><select id="filterYear" onchange="render()" class="search-input"></select><select id="filterMonth" onchange="render()" class="search-input"><option value="all">전체 월</option><option value="01">1월</option><option value="02">2월</option><option value="03">3월</option><option value="04">4월</option><option value="05">5월</option><option value="06">6월</option><option value="07">7월</option><option value="08">8월</option><option value="09">9월</option><option value="10">10월</option><option value="11">11월</option><option value="12">12월</option></select></div>
         <div class="search-box"><label>🏢 업체</label><input type="text" id="searchVendor" onkeyup="render()" class="search-input"></div>
         <div class="search-box"><label>🔍 검색</label><input type="text" id="searchItem" onkeyup="render()" class="search-input"></div>
         <div style="flex-grow: 1; text-align: right;"><button class="btn btn-excel" onclick="exportCSV()">엑셀 저장</button></div>
@@ -93,19 +89,7 @@
 
     <table>
         <thead>
-            <tr>
-                <th>등록일자</th>
-                <th>프로젝트명</th>
-                <th>발주번호</th>
-                <th>업체명</th>
-                <th>자재명</th>
-                <th>필요</th>
-                <th>입고</th>
-                <th>잔여</th>
-                <th>상태</th>
-                <th>비고</th>
-                <th>관리</th>
-            </tr>
+            <tr><th>등록일자</th><th>프로젝트명</th><th>발주번호</th><th>업체명</th><th>자재명</th><th>필요</th><th>입고</th><th>잔여</th><th>상태</th><th>비고</th><th>관리</th></tr>
         </thead>
         <tbody id="tableBody"></tbody>
     </table>
@@ -114,7 +98,6 @@
 <script>
     const DATABASE_URL = "https://ske-0001-default-rtdb.firebaseio.com/"; 
     const DB_PATH = DATABASE_URL + "inventory.json";
-
     let inventory = [];
 
     document.getElementById('pRegDate').value = new Date().toISOString().split('T')[0];
@@ -127,120 +110,80 @@
             updateFilterOptions();
             updateDashboard();
             render();
-            document.getElementById('syncStatus').innerText = "● 실시간 동기화 완료";
-        } catch (e) {
-            document.getElementById('syncStatus').innerText = "○ 오프라인 모드";
-        }
+            document.getElementById('syncStatus').innerText = "● 동기화 완료";
+        } catch (e) { document.getElementById('syncStatus').innerText = "○ 오프라인"; }
     }
 
     function getDaysDiff(regDate) {
         const today = new Date();
         const start = new Date(regDate);
-        const diff = today - start;
-        return Math.floor(diff / (1000 * 60 * 60 * 24));
+        return Math.floor((today - start) / (1000 * 60 * 60 * 24));
     }
 
-    // [📧 Gmail 연동 독촉 메일 작성 함수]
     function sendGmail(vName, event) {
         event.stopPropagation();
-        
-        const delayedItems = inventory.filter(item => 
-            item.vendor === vName && 
-            (item.targetQty - item.inQty > 0) && 
-            getDaysDiff(item.regDate) >= 7
-        );
-
-        if (delayedItems.length === 0) return alert("지연된 품목이 없습니다.");
-
+        const delayedItems = inventory.filter(item => item.vendor === vName && (item.targetQty - item.inQty > 0) && getDaysDiff(item.regDate) >= 7);
+        if (delayedItems.length === 0) return alert("지연 품목이 없습니다.");
         let itemList = delayedItems.map(item => `- ${item.project} / ${item.item} (잔여:${item.targetQty-item.inQty})`).join('%0A');
-        
         const subject = encodeURIComponent(`[독촉] ${vName} 사급자재 입고 지연 안내`);
-        const body = encodeURIComponent(`안녕하세요, ${vName} 담당자님.\n\n아래 품목들이 등록일 기준 7일 이상 입고가 지연되고 있습니다. 빠른 확인 및 조치 부탁드립니다.\n\n[지연 리스트]\n${itemList}\n\n감사합니다.`);
-        
-        // Gmail 편지쓰기 URL (새 탭에서 열기)
-        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
-        window.open(gmailUrl, '_blank');
+        const body = encodeURIComponent(`안녕하세요, ${vName} 담당자님.\n\n아래 품목들이 7일 이상 지연되고 있습니다. 확인 부탁드립니다.\n\n[지연 리스트]\n${itemList}\n\n감사합니다.`);
+        window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
     }
 
     function updateDashboard() {
         const dash = document.getElementById('dashboard');
         const vendorMap = {};
-
         inventory.forEach(item => {
-            if (!vendorMap[item.vendor]) {
-                vendorMap[item.vendor] = { total: 0, completed: 0, delayCount: 0 };
-            }
+            if (!vendorMap[item.vendor]) vendorMap[item.vendor] = { total: 0, completed: 0, delayCount: 0 };
             vendorMap[item.vendor].total++;
-            if (item.targetQty > 0 && item.inQty >= item.targetQty) {
-                vendorMap[item.vendor].completed++;
-            } else if (getDaysDiff(item.regDate) >= 7) {
-                vendorMap[item.vendor].delayCount++;
-            }
+            if (item.targetQty > 0 && item.inQty >= item.targetQty) vendorMap[item.vendor].completed++;
+            else if (getDaysDiff(item.regDate) >= 7) vendorMap[item.vendor].delayCount++;
         });
 
         dash.innerHTML = '';
         Object.keys(vendorMap).sort().forEach(vName => {
             const info = vendorMap[vName];
             const percent = Math.round((info.completed / info.total) * 100);
-            const delayTag = info.delayCount > 0 ? `<div class="delay-indicator">지연 ${info.delayCount}건</div>` : '';
-            const mailBtn = info.delayCount > 0 ? `<button class="btn-mail" onclick="sendGmail('${vName}', event)">M Gmail 독촉</button>` : '';
+            const delayHtml = info.delayCount > 0 ? `<span class="delay-tag">지연 ${info.delayCount}건</span>` : '';
+            const mailBtnHtml = info.delayCount > 0 ? `<button class="btn-mail" onclick="sendGmail('${vName}', event)">Gmail 독촉</button>` : '';
             
             dash.innerHTML += `
                 <div class="dash-card" onclick="filterByVendor('${vName}')">
-                    ${delayTag}
-                    <div class="dash-vendor-tag">VENDOR</div>
+                    <div class="dash-header">
+                        <span class="dash-vendor-tag">VENDOR</span>
+                        ${mailBtnHtml}
+                    </div>
                     <div class="dash-title">${vName}</div>
+                    <div style="margin-top:5px;">${delayHtml}</div>
                     <div class="dash-stats-row">
-                        <div style="font-size:12px; color:#64748b;">전체: ${info.total} | 완료: ${info.completed}</div>
+                        <div class="dash-info">완료 ${info.completed} / 전체 ${info.total}</div>
                         <div class="dash-percent">${percent}%</div>
                     </div>
                     <div class="dash-progress-bar">
                         <div class="dash-progress-fill" style="width: ${percent}%; background: ${percent===100?'var(--success)':'var(--primary)'}"></div>
                     </div>
-                    ${mailBtn}
                 </div>
             `;
         });
     }
 
-    function filterByVendor(vName) {
-        document.getElementById('searchVendor').value = vName;
-        render();
-    }
-
+    function filterByVendor(vName) { document.getElementById('searchVendor').value = vName; render(); }
     function updateFilterOptions() {
         const yearSelect = document.getElementById('filterYear');
-        const currentYear = new Date().getFullYear();
         const years = [...new Set(inventory.map(item => item.regDate.split('-')[0]))];
-        if (years.length === 0) years.push(currentYear.toString());
+        if (years.length === 0) years.push(new Date().getFullYear().toString());
         years.sort((a, b) => b - a);
-        const prevValue = yearSelect.value;
+        const currentYear = new Date().getFullYear().toString();
         yearSelect.innerHTML = '<option value="all">전체 연도</option>';
         years.forEach(y => { yearSelect.innerHTML += `<option value="${y}">${y}년</option>`; });
-        yearSelect.value = prevValue || currentYear;
+        yearSelect.value = currentYear;
     }
 
-    async function saveData() {
-        await fetch(DB_PATH, { method: 'PUT', body: JSON.stringify(inventory) });
-        loadData();
-    }
-
+    async function saveData() { await fetch(DB_PATH, { method: 'PUT', body: JSON.stringify(inventory) }); loadData(); }
     async function addItem() {
-        const item = {
-            regDate: document.getElementById('pRegDate').value,
-            project: document.getElementById('pName').value,
-            order: document.getElementById('pOrder').value,
-            vendor: document.getElementById('pVendor').value,
-            item: document.getElementById('pItem').value,
-            targetQty: parseInt(document.getElementById('pTargetQty').value) || 0,
-            inQty: parseInt(document.getElementById('pInQty').value) || 0,
-            remark: document.getElementById('pRemark').value,
-            timestamp: Date.now()
-        };
-        if(!item.vendor || !item.item) return alert("필수 항목 입력 누락");
-        inventory.push(item);
-        await saveData();
-        document.getElementById('pItem').value = '';
+        const item = { regDate: document.getElementById('pRegDate').value, project: document.getElementById('pName').value, order: document.getElementById('pOrder').value, vendor: document.getElementById('pVendor').value, item: document.getElementById('pItem').value, targetQty: parseInt(document.getElementById('pTargetQty').value) || 0, inQty: parseInt(document.getElementById('pInQty').value) || 0, remark: document.getElementById('pRemark').value, timestamp: Date.now() };
+        if(!item.vendor || !item.item) return alert("항목 입력 누락");
+        inventory.push(item); await saveData(); document.getElementById('pItem').value = '';
     }
 
     function editCell(idx, field, element) {
@@ -249,95 +192,44 @@
         input.type = field.includes('Qty') ? 'number' : (field === 'regDate' ? 'date' : 'text');
         input.value = inventory[idx][field];
         input.className = 'edit-input';
-        element.innerHTML = '';
-        element.appendChild(input);
-        input.focus();
-        input.onblur = async function() {
-            inventory[idx][field] = field.includes('Qty') ? (parseInt(input.value) || 0) : input.value;
-            await saveData();
-        };
+        element.innerHTML = ''; element.appendChild(input); input.focus();
+        input.onblur = async function() { inventory[idx][field] = field.includes('Qty') ? (parseInt(input.value) || 0) : input.value; await saveData(); };
     }
 
     function copyRow(idx) {
         const item = inventory[idx];
-        document.getElementById('pRegDate').value = item.regDate;
-        document.getElementById('pName').value = item.project;
-        document.getElementById('pOrder').value = item.order;
-        document.getElementById('pVendor').value = item.vendor;
-        document.getElementById('pItem').value = item.item;
-        document.getElementById('pTargetQty').value = item.targetQty;
-        document.getElementById('pInQty').value = 0;
-        document.getElementById('pRemark').value = item.remark || "";
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.getElementById('pRegDate').value = item.regDate; document.getElementById('pName').value = item.project; document.getElementById('pOrder').value = item.order; document.getElementById('pVendor').value = item.vendor; document.getElementById('pItem').value = item.item; document.getElementById('pTargetQty').value = item.targetQty; document.getElementById('pInQty').value = 0; document.getElementById('pRemark').value = item.remark || ""; window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function render() {
         const body = document.getElementById('tableBody');
         const vFilter = document.getElementById('searchVendor').value.toLowerCase();
         const iFilter = document.getElementById('searchItem').value.toLowerCase();
-        const yearFilter = document.getElementById('filterYear').value;
-        const monthFilter = document.getElementById('filterMonth').value;
+        const yFilter = document.getElementById('filterYear').value;
+        const mFilter = document.getElementById('filterMonth').value;
         body.innerHTML = '';
-        
         const sortedList = [...inventory].sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
-
         sortedList.forEach((item) => {
             const originalIdx = inventory.indexOf(item);
             const [y, m] = item.regDate.split('-');
-            const matchYear = (yearFilter === 'all' || y === yearFilter);
-            const matchMonth = (monthFilter === 'all' || m === monthFilter);
-            const matchVendor = item.vendor.toLowerCase().includes(vFilter);
-            const matchItem = item.item.toLowerCase().includes(iFilter) || item.project.toLowerCase().includes(iFilter);
-
-            if(matchYear && matchMonth && matchVendor && matchItem) {
+            if((yFilter === 'all' || y === yFilter) && (mFilter === 'all' || m === mFilter) && item.vendor.toLowerCase().includes(vFilter) && (item.item.toLowerCase().includes(iFilter) || item.project.toLowerCase().includes(iFilter))) {
                 const rem = item.targetQty - item.inQty;
-                const days = getDaysDiff(item.regDate);
-                const isDelayed = (rem > 0 && days >= 7);
+                const isDelayed = (rem > 0 && getDaysDiff(item.regDate) >= 7);
                 const statusText = item.inQty === 0 ? '미입고' : (rem > 0 ? `부분(${rem})` : '완료');
                 const statusClass = item.inQty === 0 ? 'status-none' : (rem > 0 ? 'status-part' : 'status-full');
-
-                body.innerHTML += `
-                    <tr class="${isDelayed ? 'tr-delay' : ''}">
-                        <td class="editable" onclick="editCell(${originalIdx}, 'regDate', this)">${item.regDate}</td>
-                        <td style="text-align:left; padding-left:15px;">
-                            <span class="editable" onclick="editCell(${originalIdx}, 'project', this)">${item.project}</span>
-                            <button class="btn-copy" onclick="copyRow(${originalIdx})">복사</button>
-                        </td>
-                        <td class="editable" onclick="editCell(${originalIdx}, 'order', this)">${item.order}</td>
-                        <td class="editable" onclick="editCell(${originalIdx}, 'vendor', this)">${item.vendor}</td>
-                        <td class="editable" onclick="editCell(${originalIdx}, 'item', this)">${item.item}</td>
-                        <td class="editable" onclick="editCell(${originalIdx}, 'targetQty', this)">${item.targetQty}</td>
-                        <td class="editable" onclick="editCell(${originalIdx}, 'inQty', this)" style="color:var(--primary); font-weight:bold;">${item.inQty}</td>
-                        <td style="color:var(--warn); font-weight:bold;">${rem > 0 ? rem : '-'}</td>
-                        <td>
-                            ${isDelayed ? '<span class="status-delay">⚠️ 지연</span>' : ''}
-                            <span class="status-badge ${statusClass}">${statusText}</span>
-                        </td>
-                        <td class="editable" onclick="editCell(${originalIdx}, 'remark', this)">${item.remark || '-'}</td>
-                        <td><button class="btn btn-delete" onclick="deleteItem(${originalIdx})">삭제</button></td>
-                    </tr>
-                `;
+                body.innerHTML += `<tr class="${isDelayed ? 'tr-delay' : ''}"><td class="editable" onclick="editCell(${originalIdx}, 'regDate', this)">${item.regDate}</td><td style="text-align:left; padding-left:15px;"><span class="editable" onclick="editCell(${originalIdx}, 'project', this)">${item.project}</span><button class="btn-copy" onclick="copyRow(${originalIdx})">복사</button></td><td class="editable" onclick="editCell(${originalIdx}, 'order', this)">${item.order}</td><td class="editable" onclick="editCell(${originalIdx}, 'vendor', this)">${item.vendor}</td><td class="editable" onclick="editCell(${originalIdx}, 'item', this)">${item.item}</td><td class="editable" onclick="editCell(${originalIdx}, 'targetQty', this)">${item.targetQty}</td><td class="editable" onclick="editCell(${originalIdx}, 'inQty', this)" style="color:var(--primary); font-weight:bold;">${item.inQty}</td><td style="color:var(--warn); font-weight:bold;">${rem > 0 ? rem : '-'}</td><td>${isDelayed ? '<span class="status-delay">⚠️ 지연</span>' : ''}<span class="status-badge ${statusClass}">${statusText}</span></td><td class="editable" onclick="editCell(${originalIdx}, 'remark', this)">${item.remark || '-'}</td><td><button class="btn btn-delete" onclick="deleteItem(${originalIdx})">삭제</button></td></tr>`;
             }
         });
     }
 
     async function deleteItem(idx) { if(confirm("삭제하시겠습니까?")) { inventory.splice(idx, 1); await saveData(); } }
-
     function exportCSV() {
         let csv = "\uFEFF등록일자,프로젝트,발주번호,업체명,자재명,필요수량,입고수량,잔여,상태,비고\n";
-        inventory.forEach(item => {
-            const rem = item.targetQty - item.inQty;
-            csv += `"${item.regDate}","${item.project}","${item.order}","${item.vendor}","${item.item}",${item.targetQty},${item.inQty},${rem},"${item.inQty===0?'미입고':(rem>0?'부분':'완료')}","${item.remark}"\n`;
-        });
+        inventory.forEach(item => { const rem = item.targetQty - item.inQty; csv += `"${item.regDate}","${item.project}","${item.order}","${item.vendor}","${item.item}",${item.targetQty},${item.inQty},${rem},"${item.inQty===0?'미입고':(rem>0?'부분':'완료')}","${item.remark}"\n`; });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `현황_${new Date().toISOString().slice(0,10)}.csv`;
-        a.click();
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `현황_${new Date().toISOString().slice(0,10)}.csv`; a.click();
     }
-
-    loadData();
-    setInterval(loadData, 15000); 
+    loadData(); setInterval(loadData, 15000);
 </script>
 </body>
 </html>
