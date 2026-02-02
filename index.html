@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>사급자재 통합 관리 시스템 (입고지연 강조형)</title>
+    <title>사급자재 관리 시스템 (Gmail 연동형)</title>
     <style>
         :root { --primary: #1e40af; --bg: #f1f5f9; --warn: #dc2626; --part: #d97706; --success: #059669; --delay-bg: #fff7ed; --delay-border: #fb923c; }
         body { font-family: 'Pretendard', sans-serif; background: var(--bg); padding: 20px; color: #1e293b; }
@@ -11,45 +11,42 @@
         
         /* 업체별 대시보드 */
         .dashboard { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; margin-bottom: 25px; border-bottom: 2px solid #f1f5f9; }
-        .dash-card { min-width: 260px; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 18px; cursor: pointer; transition: 0.3s; position: relative; }
+        .dash-card { min-width: 280px; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 18px; cursor: pointer; transition: 0.3s; position: relative; }
         .dash-card:hover { transform: translateY(-5px); border-color: var(--primary); background: #fff; }
         .dash-vendor-tag { font-size: 10px; font-weight: bold; color: white; background: var(--primary); padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 8px; }
         .dash-title { font-size: 15px; font-weight: 800; color: #1e293b; margin-bottom: 10px; }
-        .dash-stats-row { display: flex; justify-content: space-between; align-items: flex-end; }
+        
+        /* Gmail 버튼 스타일 */
+        .btn-mail { position: absolute; bottom: 15px; right: 15px; background: #ea4335; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: bold; }
+        .btn-mail:hover { background: #d33828; box-shadow: 0 2px 8px rgba(234, 67, 53, 0.3); }
+
+        .dash-stats-row { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 10px; }
         .dash-percent { font-size: 20px; font-weight: 900; color: var(--primary); }
-        .dash-progress-bar { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 10px; overflow: hidden; }
+        .dash-progress-bar { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
         .dash-progress-fill { height: 100%; background: var(--primary); transition: width 0.5s; }
         .delay-indicator { position: absolute; top: 10px; right: 10px; font-size: 10px; color: var(--warn); font-weight: bold; background: #fee2e2; padding: 2px 6px; border-radius: 4px; }
 
-        /* 입력/검색부 */
+        /* 입력/검색/테이블 스타일 */
         .input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; background: #f8fafc; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
         .field { display: flex; flex-direction: column; gap: 5px; }
         label { font-size: 11px; font-weight: bold; color: #64748b; }
         input, select { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
-        
         .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-add { background: var(--primary); color: white; grid-column: 1 / -1; }
         .btn-excel { background: #059669; color: white; }
         .btn-delete { background: none; color: #94a3b8; font-size: 11px; }
         .btn-copy { background: #e2e8f0; color: #475569; padding: 2px 6px; font-size: 10px; margin-left: 5px; border-radius: 4px; border: 1px solid #cbd5e1; }
-
         .search-container { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; background: #eff6ff; padding: 15px; border-radius: 8px; border: 1px solid #dbeafe; }
         .search-input { padding: 8px; width: 150px; border: 1px solid #cbd5e1; border-radius: 6px; }
-
-        /* 테이블 지연 강조 스타일 */
         table { width: 100%; border-collapse: collapse; }
         th { background: #f1f5f9; color: #475569; padding: 12px 10px; font-size: 12px; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 10; }
         td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-size: 13px; }
-        
         .tr-delay { background-color: var(--delay-bg) !important; border-left: 4px solid var(--delay-border); }
-        .tr-delay:hover { background-color: #ffedd5 !important; }
-
         .status-badge { padding: 4px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
         .status-none { background: #fee2e2; color: #991b1b; }
         .status-part { background: #fef3c7; color: #92400e; }
         .status-full { background: #dcfce7; color: #166534; }
-        .status-delay { background: var(--warn); color: white; border-radius: 4px; padding: 2px 5px; margin-right: 4px; }
-        
+        .status-delay { background: var(--warn); color: white; border-radius: 4px; padding: 2px 5px; margin-right: 4px; font-size: 10px; }
         .editable { cursor: pointer; border-radius: 4px; padding: 2px 5px; }
         .editable:hover { background: #fff9c4; }
         .edit-input { width: 90%; padding: 4px; border: 2px solid var(--primary); border-radius: 4px; text-align: center; font-size: 13px; }
@@ -136,12 +133,33 @@
         }
     }
 
-    // 날짜 차이 계산 함수 (지연 확인용)
     function getDaysDiff(regDate) {
         const today = new Date();
         const start = new Date(regDate);
         const diff = today - start;
         return Math.floor(diff / (1000 * 60 * 60 * 24));
+    }
+
+    // [📧 Gmail 연동 독촉 메일 작성 함수]
+    function sendGmail(vName, event) {
+        event.stopPropagation();
+        
+        const delayedItems = inventory.filter(item => 
+            item.vendor === vName && 
+            (item.targetQty - item.inQty > 0) && 
+            getDaysDiff(item.regDate) >= 7
+        );
+
+        if (delayedItems.length === 0) return alert("지연된 품목이 없습니다.");
+
+        let itemList = delayedItems.map(item => `- ${item.project} / ${item.item} (잔여:${item.targetQty-item.inQty})`).join('%0A');
+        
+        const subject = encodeURIComponent(`[독촉] ${vName} 사급자재 입고 지연 안내`);
+        const body = encodeURIComponent(`안녕하세요, ${vName} 담당자님.\n\n아래 품목들이 등록일 기준 7일 이상 입고가 지연되고 있습니다. 빠른 확인 및 조치 부탁드립니다.\n\n[지연 리스트]\n${itemList}\n\n감사합니다.`);
+        
+        // Gmail 편지쓰기 URL (새 탭에서 열기)
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
+        window.open(gmailUrl, '_blank');
     }
 
     function updateDashboard() {
@@ -156,7 +174,7 @@
             if (item.targetQty > 0 && item.inQty >= item.targetQty) {
                 vendorMap[item.vendor].completed++;
             } else if (getDaysDiff(item.regDate) >= 7) {
-                vendorMap[item.vendor].delayCount++; // 7일 이상 미입고 시 지연 카운트
+                vendorMap[item.vendor].delayCount++;
             }
         });
 
@@ -165,6 +183,7 @@
             const info = vendorMap[vName];
             const percent = Math.round((info.completed / info.total) * 100);
             const delayTag = info.delayCount > 0 ? `<div class="delay-indicator">지연 ${info.delayCount}건</div>` : '';
+            const mailBtn = info.delayCount > 0 ? `<button class="btn-mail" onclick="sendGmail('${vName}', event)">M Gmail 독촉</button>` : '';
             
             dash.innerHTML += `
                 <div class="dash-card" onclick="filterByVendor('${vName}')">
@@ -178,6 +197,7 @@
                     <div class="dash-progress-bar">
                         <div class="dash-progress-fill" style="width: ${percent}%; background: ${percent===100?'var(--success)':'var(--primary)'}"></div>
                     </div>
+                    ${mailBtn}
                 </div>
             `;
         });
@@ -217,7 +237,7 @@
             remark: document.getElementById('pRemark').value,
             timestamp: Date.now()
         };
-        if(!item.vendor || !item.item) return alert("필수 입력 항목 누락");
+        if(!item.vendor || !item.item) return alert("필수 항목 입력 누락");
         inventory.push(item);
         await saveData();
         document.getElementById('pItem').value = '';
@@ -273,7 +293,6 @@
                 const rem = item.targetQty - item.inQty;
                 const days = getDaysDiff(item.regDate);
                 const isDelayed = (rem > 0 && days >= 7);
-                
                 const statusText = item.inQty === 0 ? '미입고' : (rem > 0 ? `부분(${rem})` : '완료');
                 const statusClass = item.inQty === 0 ? 'status-none' : (rem > 0 ? 'status-part' : 'status-full');
 
