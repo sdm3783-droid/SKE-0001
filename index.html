@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>사급자재 관리 시스템 (담당자 추가 완료)</title>
+    <title>사급자재 관리 시스템 (메일 양식 개선)</title>
     <style>
         :root { --primary: #1e40af; --bg: #f1f5f9; --warn: #dc2626; --part: #d97706; --success: #059669; --delay-bg: #fff7ed; --delay-border: #fb923c; }
         body { font-family: 'Pretendard', sans-serif; background: var(--bg); padding: 20px; color: #1e293b; }
@@ -124,6 +124,7 @@
         return Math.floor((today - start) / (1000 * 60 * 60 * 24));
     }
 
+    // [📧 Gmail 독촉 메일 작성 함수 - 프로젝트명 포함 수정]
     function sendGmail(vName, event) {
         event.stopPropagation();
         const delayedItems = inventory.filter(item => item.vendor === vName && (item.targetQty - item.inQty > 0) && getDaysDiff(item.regDate) >= 7);
@@ -131,9 +132,14 @@
 
         const contact = vendorContacts[vName] || { name: `${vName} 담당자님`, email: "" };
         
-        let itemList = delayedItems.map(item => `- ${item.project} / ${item.item} (잔여:${item.targetQty-item.inQty})`).join('%0A');
-        const subject = encodeURIComponent(`[독촉] ${vName} 사급자재 입고 지연 안내`);
-        const body = encodeURIComponent(`안녕하세요, ${contact.name}.\n\n아래 품목들이 7일 이상 지연되고 있습니다. 확인 부탁드립니다.\n\n[지연 리스트]\n${itemList}\n\n감사합니다.`);
+        // 지연된 프로젝트 목록 추출 (중복 제거)
+        const projects = [...new Set(delayedItems.map(item => item.project))].join(', ');
+        
+        // 품목 리스트 생성 (프로젝트 / 자재명 / 잔여수량)
+        let itemList = delayedItems.map(item => `- [${item.project}] ${item.item} (잔여:${item.targetQty-item.inQty}ea)`).join('%0A');
+        
+        const subject = encodeURIComponent(`[독촉] ${vName} 사급자재 입고 지연 안내 (${projects})`);
+        const body = encodeURIComponent(`안녕하세요, ${contact.name}.\n\n현재 진행 중인 프로젝트(${projects})와 관련하여 아래 자재들이 등록일 기준 7일 이상 입고가 지연되고 있습니다.\n\n현장 공정 차질이 우려되오니 빠른 확인 및 납기 회신 부탁드립니다.\n\n[지연 품목 리스트]\n${itemList}\n\n감사합니다.`);
         
         window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${contact.email}&su=${subject}&body=${body}`, '_blank');
     }
