@@ -2,14 +2,13 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>사급자재 관리 시스템 (디자인 개선)</title>
+    <title>사급자재 관리 시스템 (담당자 추가 완료)</title>
     <style>
         :root { --primary: #1e40af; --bg: #f1f5f9; --warn: #dc2626; --part: #d97706; --success: #059669; --delay-bg: #fff7ed; --delay-border: #fb923c; }
         body { font-family: 'Pretendard', sans-serif; background: var(--bg); padding: 20px; color: #1e293b; }
         .container { max-width: 1700px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { margin-top: 0; color: var(--primary); border-left: 6px solid var(--primary); padding-left: 15px; margin-bottom: 20px; }
         
-        /* 업체별 대시보드 - 디자인 대폭 수정 */
         .dashboard { display: flex; gap: 15px; overflow-x: auto; padding: 10px 5px; margin-bottom: 25px; border-bottom: 2px solid #f1f5f9; }
         .dash-card { min-width: 280px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; cursor: pointer; transition: 0.3s; position: relative; display: flex; flex-direction: column; gap: 10px; }
         .dash-card:hover { transform: translateY(-5px); border-color: var(--primary); background: #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
@@ -17,12 +16,10 @@
         .dash-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
         .dash-vendor-tag { font-size: 10px; font-weight: bold; color: white; background: var(--primary); padding: 2px 8px; border-radius: 4px; }
         
-        /* 버튼 위치 및 스타일 개선 */
         .btn-mail { background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold; transition: 0.2s; display: flex; align-items: center; gap: 4px; border: 1px solid transparent; }
         .btn-mail:hover { background: white; color: #ef4444; border-color: #ef4444; }
 
         .dash-title { font-size: 17px; font-weight: 800; color: #1e293b; margin: 0; }
-        
         .dash-stats-row { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
         .dash-info { font-size: 13px; color: #64748b; font-weight: 500; }
         .dash-percent { font-size: 20px; font-weight: 900; color: var(--primary); }
@@ -32,7 +29,6 @@
         
         .delay-tag { font-size: 11px; color: var(--warn); font-weight: bold; background: #fee2e2; padding: 2px 8px; border-radius: 15px; border: 1px solid #fecaca; display: inline-block; }
 
-        /* 테이블 및 입력부 스타일 (기존 유지) */
         .input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; background: #f8fafc; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
         .field { display: flex; flex-direction: column; gap: 5px; }
         label { font-size: 11px; font-weight: bold; color: #64748b; }
@@ -98,6 +94,14 @@
 <script>
     const DATABASE_URL = "https://ske-0001-default-rtdb.firebaseio.com/"; 
     const DB_PATH = DATABASE_URL + "inventory.json";
+    
+    // [📍 업체 담당자 연락처 데이터베이스]
+    const vendorContacts = {
+        "프로텍": { name: "노하경 과장님", email: "hknoh@protec21.co.kr" },
+        "한주하이텍": { name: "석성용 과장님", email: "sysuk1@hanjoohitech.com" },
+        "내비간티스": { name: "우한솔 프로님", email: "hanswoo@navigantis.co" }
+    };
+
     let inventory = [];
 
     document.getElementById('pRegDate').value = new Date().toISOString().split('T')[0];
@@ -124,10 +128,14 @@
         event.stopPropagation();
         const delayedItems = inventory.filter(item => item.vendor === vName && (item.targetQty - item.inQty > 0) && getDaysDiff(item.regDate) >= 7);
         if (delayedItems.length === 0) return alert("지연 품목이 없습니다.");
+
+        const contact = vendorContacts[vName] || { name: `${vName} 담당자님`, email: "" };
+        
         let itemList = delayedItems.map(item => `- ${item.project} / ${item.item} (잔여:${item.targetQty-item.inQty})`).join('%0A');
         const subject = encodeURIComponent(`[독촉] ${vName} 사급자재 입고 지연 안내`);
-        const body = encodeURIComponent(`안녕하세요, ${vName} 담당자님.\n\n아래 품목들이 7일 이상 지연되고 있습니다. 확인 부탁드립니다.\n\n[지연 리스트]\n${itemList}\n\n감사합니다.`);
-        window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
+        const body = encodeURIComponent(`안녕하세요, ${contact.name}.\n\n아래 품목들이 7일 이상 지연되고 있습니다. 확인 부탁드립니다.\n\n[지연 리스트]\n${itemList}\n\n감사합니다.`);
+        
+        window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${contact.email}&su=${subject}&body=${body}`, '_blank');
     }
 
     function updateDashboard() {
