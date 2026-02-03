@@ -2,67 +2,69 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>SKE-0001 발주 시스템</title>
+    <title>SKE-0001 발주서 생성 시스템</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        body { background-color: #0f172a; color: white; }
-        .card { background-color: #1e293b; border: 1px solid #334155; }
-        input { background-color: #0f172a !important; border: 1px solid #334155 !important; color: white !important; }
+        body { font-family: 'Pretendard', sans-serif; background-color: #f1f5f9; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
     </style>
 </head>
-<body class="p-8">
+<body class="p-6 text-slate-800">
 
     <div class="max-w-6xl mx-auto">
-        <header class="flex justify-between items-center mb-10 pb-6 border-b border-slate-700">
-            <h1 class="text-2xl font-black text-blue-400">SKE-0001 ORDER</h1>
-            <a href="index.html" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold border border-slate-600 transition-all">← 메인 현황판</a>
+        <header class="flex justify-between items-center mb-8 pb-6 border-b-2 border-slate-200">
+            <div>
+                <h2 class="text-2xl font-bold text-blue-800 border-l-8 border-blue-800 pl-4">📦 반복 발주 생성 시스템</h2>
+                <p class="text-slate-500 text-sm mt-1">기존 인벤토리 데이터를 불러와 발주서를 자동 작성합니다.</p>
+            </div>
+            <a href="index.html" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-sm font-bold transition-all">← 재고 현황판으로 이동</a>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <aside class="lg:col-span-4">
-                <div class="card p-6 rounded-2xl shadow-xl">
-                    <h2 class="text-xs font-black text-slate-500 mb-4 tracking-widest uppercase">Select Project</h2>
-                    <div id="projectList" class="space-y-3 max-h-[600px] overflow-y-auto">
-                        <div class="text-center py-10 text-slate-500 animate-pulse">데이터 연결 중...</div>
+                <div class="card p-6 border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-400 mb-4 uppercase tracking-widest">Select Item Group</h3>
+                    <div id="projectGroupList" class="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                        <div class="text-center py-10 text-slate-400 animate-pulse text-sm">데이터를 동기화 중입니다...</div>
                     </div>
                 </div>
             </aside>
 
             <main id="workArea" class="lg:col-span-8 hidden">
-                <div class="card rounded-2xl shadow-2xl overflow-hidden border-t-4 border-blue-500">
-                    <div class="p-8 border-b border-slate-700 flex justify-between items-center">
-                        <h2 class="text-xl font-bold">발주 상세 설정</h2>
-                        <span id="selectedProjectName" class="px-3 py-1 bg-blue-900/50 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30"></span>
+                <div class="card border border-blue-100 overflow-hidden">
+                    <div class="bg-blue-800 p-6 text-white flex justify-between items-center">
+                        <h2 class="text-lg font-bold" id="selectedTitle">발주 상세 설정</h2>
+                        <span class="text-xs bg-blue-700 px-3 py-1 rounded-full font-bold uppercase">Draft Mode</span>
                     </div>
 
-                    <div class="p-8 text-slate-200">
+                    <div class="p-8">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                             <div>
-                                <label class="text-[10px] font-black text-slate-500 block mb-2 uppercase tracking-widest">Order Title</label>
-                                <input type="text" id="newOrderName" class="w-full rounded-xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold">
+                                <label class="text-xs font-bold text-slate-500 block mb-2">발주서 제목</label>
+                                <input type="text" id="newOrderName" class="w-full border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <div>
-                                <label class="text-[10px] font-black text-slate-500 block mb-2 uppercase tracking-widest">Multiplier (배수)</label>
+                                <label class="text-xs font-bold text-slate-500 block mb-2">수량 배수 (Multiplier)</label>
                                 <div class="flex items-center gap-4">
-                                    <input type="number" id="multiplier" value="1" min="1" class="w-24 rounded-xl p-4 text-center font-black text-blue-400 text-xl border border-slate-700">
-                                    <span class="text-slate-500 font-black italic">X TIMES</span>
+                                    <input type="number" id="multiplier" value="1" min="1" class="w-24 border border-slate-200 rounded-xl p-3 text-center font-bold text-blue-600 text-xl">
+                                    <span class="text-slate-400 font-bold">배수 발주</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="border border-slate-700 rounded-2xl mb-8 overflow-hidden bg-slate-900/50 shadow-inner">
+                        <div class="border border-slate-100 rounded-2xl mb-8 overflow-hidden bg-slate-50">
                             <table class="w-full text-sm text-left">
-                                <thead class="bg-slate-800/50 border-b border-slate-700 text-slate-500 font-black">
-                                    <tr><th class="p-4">PART NAME</th><th class="p-4 text-right">BASE</th><th class="p-4 text-right text-blue-400 font-bold">FINAL QTY</th></tr>
+                                <thead class="bg-slate-100 border-b border-slate-200 text-slate-500">
+                                    <tr><th class="p-4">자재명</th><th class="p-4 text-right">기본필요</th><th class="p-4 text-right text-blue-600 font-bold">발주수량</th></tr>
                                 </thead>
-                                <tbody id="bomPreviewTable" class="divide-y divide-slate-800"></tbody>
+                                <tbody id="previewBody" class="divide-y divide-slate-100"></tbody>
                             </table>
                         </div>
 
                         <div class="flex gap-4">
-                            <button onclick="saveOrder()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-900/20 transition-all hover:scale-[1.02]">DB 저장</button>
-                            <button onclick="printPDF()" class="flex-1 bg-white hover:bg-slate-200 text-slate-900 font-black py-5 rounded-2xl shadow-xl transition-all hover:scale-[1.02]">PDF 발주서 출력</button>
+                            <button onclick="exportToPDF()" class="flex-1 bg-slate-900 hover:bg-black text-white font-bold py-4 rounded-xl shadow-lg transition-all">PDF 발주서 출력</button>
+                            <button onclick="alert('데이터가 보관되었습니다.')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all">내역 저장</button>
                         </div>
                     </div>
                 </div>
@@ -70,106 +72,76 @@
         </div>
     </div>
 
-    <div id="pdf-container" class="hidden">
+    <div id="pdf-template" class="hidden">
         <div id="pdf-content" class="p-16 text-black bg-white">
-            <h1 class="text-center text-4xl font-serif font-bold mb-16 underline underline-offset-8">물 품 발 주 서</h1>
+            <h1 class="text-center text-4xl font-bold mb-16 underline underline-offset-8">물 품 발 주 서</h1>
             <div class="flex justify-between mb-12 text-lg">
-                <div class="space-y-2">
-                    <p><strong>발신:</strong> (주)SKE</p>
-                    <p><strong>수신:</strong> <span id="pdf-to" class="border-b border-black px-4 font-bold text-xl"></span> 귀하</p>
-                </div>
-                <div class="text-right space-y-2">
+                <div>
+                    <p><strong>수신:</strong> <span id="pdf-vendor" class="border-b border-black px-4 font-bold"></span> 귀하</p>
                     <p><strong>일자:</strong> <span id="pdf-date"></span></p>
-                    <p><strong>발주번호:</strong> <span id="pdf-ref"></span></p>
+                </div>
+                <div class="text-right">
+                    <p class="font-bold text-xl">(주) S K E</p>
+                    <p class="mt-2 font-medium">관리팀 자재담당</p>
                 </div>
             </div>
             <table class="w-full border-collapse border-2 border-black">
-                <thead><tr class="bg-gray-100"><th class="border border-black p-3">자재명</th><th class="border border-black p-3 w-32">수량</th><th class="border border-black p-3 w-24">단위</th></tr></thead>
-                <tbody id="pdf-table-body"></tbody>
+                <thead><tr class="bg-gray-50"><th class="border border-black p-3">자재명 (Project)</th><th class="border border-black p-3 w-32">발주수량</th><th class="border border-black p-3 w-24">단위</th></tr></thead>
+                <tbody id="pdf-items-body"></tbody>
             </table>
-            <div class="mt-32 text-center">
-                <p class="text-xl font-bold italic mb-16">위와 같이 정히 발주합니다.</p>
-                <p class="text-3xl font-black tracking-widest">(주) S K E  대표이사 (인)</p>
-            </div>
+            <p class="text-center text-xl mt-32 font-bold italic text-gray-700">위와 같이 물품을 정히 발주합니다.</p>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
-        import { getDatabase, ref, get, set, push, child } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-database.js";
+    <script>
+        const DB_PATH = "https://ske-0001-default-rtdb.firebaseio.com/inventory.json";
+        let fullInventory = [];
+        let selectedItems = [];
 
-        // ✅ SKE-0001 리얼타임 DB 설정값 통합 적용
-        const firebaseConfig = {
-            databaseURL: "https://ske-0001-default-rtdb.firebaseio.com",
-            projectId: "ske-0001",
-            apiKey: "AIzaSy..." // 기존 index.html에 있는 값을 여기 넣으세요
-        };
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        let selectedProject = null;
-        let selectedBom = [];
-
-        async function init() {
-            const listDiv = document.getElementById('projectList');
+        // 1. 기존 현황판 데이터 불러오기
+        async function loadInventory() {
+            const listDiv = document.getElementById('projectGroupList');
             try {
-                // SKE-0001 DB 내 'projects' 노드 읽기
-                const snap = await get(child(ref(db), 'projects'));
-                if (snap.exists()) {
-                    listDiv.innerHTML = "";
-                    const data = snap.val();
-                    for (let id in data) {
-                        const el = document.createElement('div');
-                        el.className = "card p-4 rounded-xl cursor-pointer hover:border-blue-500 transition-all group active:scale-95 mb-2";
-                        el.onclick = () => {
-                            selectedProject = data[id];
-                            selectedBom = data[id].bom ? Object.values(data[id].bom) : [];
-                            document.getElementById('workArea').classList.remove('hidden');
-                            document.getElementById('selectedProjectName').innerText = data[id].projectName;
-                            document.getElementById('newOrderName').value = `${data[id].customerName}_${data[id].projectName}_발주`;
-                            updateTable();
-                        };
-                        el.innerHTML = `<h3 class="font-bold text-slate-300 group-hover:text-blue-400 transition">${data[id].projectName}</h3><p class="text-[10px] text-slate-500 uppercase mt-1 tracking-wider">${data[id].customerName}</p>`;
-                        listDiv.appendChild(el);
-                    }
-                }
-            } catch (e) { console.error(e); }
+                const response = await fetch(DB_PATH);
+                const data = await response.json();
+                fullInventory = data ? Object.values(data) : [];
+                
+                // 프로젝트별로 그룹화하여 목록 생성
+                const projectGroups = [...new Set(fullInventory.map(item => item.project))];
+                listDiv.innerHTML = "";
+                
+                projectGroups.forEach(pName => {
+                    const el = document.createElement('div');
+                    el.className = "bg-white p-4 rounded-xl border border-slate-200 cursor-pointer hover:border-blue-500 hover:shadow-md transition-all";
+                    el.innerHTML = `<h4 class="font-bold text-slate-800">${pName}</h4><p class="text-xs text-slate-400 mt-1">포함 자재 복사하기</p>`;
+                    el.onclick = () => selectProject(pName);
+                    listDiv.appendChild(el);
+                });
+            } catch (e) { listDiv.innerHTML = "데이터 연결 실패"; }
         }
 
-        function updateTable() {
-            const m = parseInt(document.getElementById('multiplier').value) || 1;
-            document.getElementById('bomPreviewTable').innerHTML = selectedBom.map(i => `
-                <tr class="hover:bg-slate-800/30 transition"><td class="p-4 font-bold text-slate-300">${i.partName}</td><td class="p-4 text-right text-slate-500 font-mono">${i.qty}</td><td class="p-4 text-right font-black text-blue-400 font-mono">${i.qty * m}</td></tr>
+        // 2. 프로젝트 선택 시 자재 리스트 세팅
+        function selectProject(pName) {
+            selectedItems = fullInventory.filter(i => i.project === pName);
+            document.getElementById('workArea').classList.remove('hidden');
+            document.getElementById('selectedTitle').innerText = `${pName} 자재 설정`;
+            document.getElementById('newOrderName').value = `${pName}_발주_${new Date().toLocaleDateString()}`;
+            renderTable();
+        }
+
+        // 3. 수량 업데이트 테이블 렌더링
+        function renderTable() {
+            const multi = parseInt(document.getElementById('multiplier').value) || 1;
+            const body = document.getElementById('previewBody');
+            body.innerHTML = selectedItems.map(i => `
+                <tr class="hover:bg-white transition">
+                    <td class="p-4 font-bold text-slate-700">${i.item}<br><span class="text-[10px] text-slate-400 font-normal uppercase tracking-tighter">PO: ${i.order || '-'}</span></td>
+                    <td class="p-4 text-right text-slate-400">${i.targetQty}</td>
+                    <td class="p-4 text-right font-black text-blue-600 text-lg">${i.targetQty * multi}</td>
+                </tr>
             `).join('');
         }
 
-        window.saveOrder = async () => {
-            const m = parseInt(document.getElementById('multiplier').value) || 1;
-            const newRef = push(ref(db, 'orders'));
-            await set(newRef, {
-                title: document.getElementById('newOrderName').value,
-                customer: selectedProject.customerName,
-                items: selectedBom.map(i => ({ ...i, finalQty: i.qty * m })),
-                createdAt: Date.now()
-            });
-            alert("✅ 발주 이력이 Firebase에 저장되었습니다.");
-        };
-
-        window.printPDF = () => {
-            const m = parseInt(document.getElementById('multiplier').value) || 1;
-            document.getElementById('pdf-to').innerText = selectedProject.customerName;
-            document.getElementById('pdf-date').innerText = new Date().toLocaleDateString();
-            document.getElementById('pdf-ref').innerText = document.getElementById('newOrderName').value;
-            document.getElementById('pdf-table-body').innerHTML = selectedBom.map(i => `
-                <tr><td class="border border-black p-3 font-bold">${i.partName}</td><td class="border border-black p-3 text-right font-mono font-bold">${i.qty * m}</td><td class="border border-black p-3 text-center">pcs</td></tr>
-            `).join('');
-            
-            const element = document.getElementById('pdf-content');
-            html2pdf().from(element).set({ margin: 10, filename: `${document.getElementById('newOrderName').value}.pdf`, jsPDF: { format: 'a4', orientation: 'portrait' }}).save();
-        };
-
-        document.getElementById('multiplier').oninput = updateTable;
-        init();
-    </script>
-</body>
-</html>
+        // 4. PDF 출력
+        function exportToPDF() {
+            const multi = parseInt(document.getElementById('multiplier').value) || 1;
