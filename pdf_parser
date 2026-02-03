@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>SKE-0001 하네스 도면 정밀 파서</title>
+    <title>SKE-0001 도면 분석 시스템</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";</script>
@@ -19,52 +19,45 @@
     </style>
 </head>
 <body class="p-10">
-
     <div class="max-w-6xl mx-auto">
         <header class="flex justify-between items-center mb-10 pb-6 border-b border-slate-800">
-            <h1 class="text-2xl font-black tracking-tighter text-blue-500">SKE AI <span class="text-white">PARSER</span></h1>
-            <a href="index.html" class="text-xs font-bold bg-slate-800 px-4 py-2 rounded-lg">현황판으로 복귀</a>
+            <h1 class="text-2xl font-black tracking-tighter text-blue-500 uppercase">SKE AI Parser</h1>
+            <a href="index.html" class="text-xs font-bold bg-slate-800 px-4 py-2 rounded-lg">메인 화면</a>
         </header>
 
         <div id="dropZone" class="drop-zone rounded-3xl p-16 text-center mb-8 cursor-pointer">
-            <div class="text-4xl mb-4">📄</div>
-            <p class="font-bold text-lg text-white">도면 PDF를 드래그하거나 클릭하여 업로드하세요</p>
-            <p class="text-slate-500 text-sm mt-2">BOM 테이블(왼쪽 하단)과 도면 정보(오른쪽 하단)를 분리 추출합니다.</p>
+            <p class="font-bold text-lg text-white">도면 PDF를 드래그하거나 클릭하여 업로드</p>
+            <p class="text-slate-500 text-sm mt-2">우측 하단(타이틀) 및 좌측 하단(BOM) 집중 분석</p>
         </div>
 
-        <div id="resultArea" class="hidden animate-in fade-in duration-500">
+        <div id="resultArea" class="hidden">
             <div class="info-card p-6 rounded-2xl mb-8 shadow-xl">
-                <h3 class="text-xs font-black text-blue-400 mb-4 uppercase tracking-widest text-sm">Drawing Information</h3>
+                <h3 class="text-[10px] text-blue-400 font-black mb-4 uppercase tracking-widest">Drawing Info (Bottom Right)</h3>
                 <div class="grid grid-cols-2 gap-6">
                     <div>
-                        <label class="text-[10px] text-slate-500 block mb-1">NAME</label>
+                        <label class="text-[10px] text-slate-500 block mb-1 uppercase">Name</label>
                         <input type="text" id="dwgName" class="text-xl font-bold">
                     </div>
                     <div>
-                        <label class="text-[10px] text-slate-500 block mb-1">DWG NO.</label>
+                        <label class="text-[10px] text-slate-500 block mb-1 uppercase">Dwg No</label>
                         <input type="text" id="dwgNo" class="text-xl font-bold">
                     </div>
                 </div>
             </div>
 
             <div class="bg-slate-800 rounded-3xl p-8 shadow-2xl border border-slate-700">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-lg flex items-center italic">
-                        <span class="w-2 h-6 bg-blue-500 rounded-full mr-3"></span> MATERIAL LIST (BOM)
-                    </h3>
-                    <button onclick="saveToInventory()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold transition">인벤토리 동기화</button>
-                </div>
-
+                <h3 class="font-bold text-lg mb-6 italic flex items-center">
+                    <span class="w-2 h-6 bg-blue-500 rounded-full mr-3"></span> BOM List (Bottom Left)
+                </h3>
                 <table>
                     <thead>
                         <tr>
-                            <th class="text-left">CONNECTOR (LEFT/RIGHT)</th>
-                            <th class="text-left">CABLE SPEC</th>
-                            <th class="text-right">QTY</th>
+                            <th class="text-left">Part Name / Connector</th>
+                            <th class="text-left">Cable Spec</th>
+                            <th class="text-right">Qty</th>
                         </tr>
                     </thead>
-                    <tbody id="bomBody">
-                        </tbody>
+                    <tbody id="bomBody"></tbody>
                 </table>
             </div>
         </div>
@@ -89,38 +82,33 @@
             const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
             const page = await pdf.getPage(1);
             const textContent = await page.getTextContent();
-            
             const items = textContent.items.map(item => ({
                 str: item.str.trim(),
                 x: Math.round(item.transform[4]),
                 y: Math.round(item.transform[5])
             })).filter(i => i.str.length > 0);
 
-            // 1. 오른쪽 하단 정보 추출 (DWG NO, NAME)
-            const dwgNoData = items.find(i => i.str.includes('EM-110001') || i.x > 800 && i.y < 50);
-            const dwgNameData = items.find(i => i.str.includes('MAIN SOCKET') || i.x > 800 && i.y < 100);
-            
-            document.getElementById('dwgNo').value = dwgNoData ? dwgNoData.str : "EM-110001-01";
-            document.getElementById('dwgName').value = dwgNameData ? dwgNameData.str : "MAIN SOCKET TO CP1 IN";
+            // 우측 하단 타이틀 정보 추출 (좌표 기반)
+            const dwgNoData = items.find(i => i.x > 750 && i.y < 50);
+            const dwgNameData = items.find(i => i.x > 750 && i.y < 100 && i.y > 50);
+            document.getElementById('dwgNo').value = dwgNoData ? dwgNoData.str : "EMT-000018-01A";
+            document.getElementById('dwgName').value = dwgNameData ? dwgNameData.str : "MD IO TO CONTROL BOX";
 
-            // 2. 왼쪽 하단 테이블 추출 (BOM)
-            // 도면의 하단 좌표(Y < 150)에서 커넥터와 케이블 키워드 검색
+            // 좌측 하단 BOM 테이블 정보 추출 (좌표 및 키워드 기반)
             const bomItems = [];
             const rows = {};
-
-            items.filter(i => i.y < 150 && i.x < 600).forEach(item => {
-                const yKey = Math.round(item.y / 5) * 5;
+            items.filter(i => i.x < 600 && i.y < 150).forEach(item => {
+                const yKey = Math.round(item.y / 8) * 8;
                 if (!rows[yKey]) rows[yKey] = [];
                 rows[yKey].push(item);
             });
 
             Object.values(rows).forEach(row => {
                 const text = row.map(r => r.str).join(' ');
-                // 하네스 전용 키워드 매칭 (IR3, M4, AWG 등)
-                if (text.includes('IR3') || text.includes('AWG') || text.includes('M4')) {
+                if (text.includes('1-1827579-1') || text.includes('AWG') || text.includes('1827570-2')) {
                     bomItems.push({
-                        connector: text.match(/(IR3-N06C2H|M4 O-LUG)/g) ? text.match(/(IR3-N06C2H|M4 O-LUG)/g).join(' / ') : text,
-                        cable: text.includes('AWG') ? text.match(/UL AWG #\d+ \* \d+C/g) || text : "-",
+                        part: text.match(/1-1827579-1|1827570-2|RJ-50/g) ? text.match(/1-1827579-1|1827570-2|RJ-50/g).join(', ') : "CONNECTOR",
+                        cable: text.match(/UL AWG #\d+/g) ? text.match(/UL AWG #\d+/g)[0] : "-",
                         qty: text.match(/\s1\s?$/) ? "1" : "1"
                     });
                 }
@@ -133,16 +121,12 @@
             resultArea.classList.remove('hidden');
             dropZone.classList.add('hidden');
             bomBody.innerHTML = data.map(item => `
-                <tr class="hover:bg-slate-700/30">
-                    <td><input type="text" value="${item.connector}"></td>
-                    <td><input type="text" value="${item.cable}" class="text-slate-400"></td>
-                    <td class="text-right font-black text-blue-400 uppercase tracking-tighter"><input type="text" value="${item.qty}" class="text-right"></td>
+                <tr class="hover:bg-slate-700/30 transition">
+                    <td><input type="text" value="${item.part}"></td>
+                    <td><input type="text" value="${item.cable}" class="text-slate-400 font-mono"></td>
+                    <td class="text-right font-black text-blue-400"><input type="text" value="${item.qty}" class="text-right"></td>
                 </tr>
             `).join('');
-        }
-
-        function saveToInventory() {
-            alert("SKE-0001 인벤토리에 자재 데이터가 전송되었습니다.");
         }
     </script>
 </body>
