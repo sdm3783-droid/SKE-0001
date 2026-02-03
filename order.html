@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>SKE-0001 발주 관리 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-900 font-sans">
+
+    <div class="max-w-6xl mx-auto py-8 px-4">
+        <header class="flex justify-between items-center mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div>
+                <h1 class="text-2xl font-black text-slate-800 uppercase tracking-tighter">SKE-0001 <span class="text-blue-600 font-medium text-lg ml-2 underline underline-offset-4">Order System</span></h1>
+                <p class="text-slate-400 text-sm mt-1">기존 프로젝트 데이터를 기반으로 발주서를 자동 생성합니다.</p>
+            </div>
+            <a href="index.html" class="text-xs font-bold px-4 py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">메인 현황판으로 이동</a>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <aside class="lg:col-span-4 space-y-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <h2 class="font-bold text-slate-700 mb-4 flex items-center italic">PROJECT LIST</h2>
+                    <div id="projectList" class="space-y-2 overflow-y-auto max-h-[500px]">
+                        <div class="text-center py-10 text-slate-400 animate-pulse text-sm">데이터를 연결 중입니다...</div>
+                    </div>
+                </div>
+            </aside>
+
+            <main id="workArea" class="lg:col-span-8 hidden">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
+                    <div class="bg-slate-800 p-6 text-white flex justify-between items-center">
+                        <h2 class="text-lg font-bold">주문서 상세 설정</h2>
+                        <span id="selectedProjectName" class="text-sm bg-blue-600 px-3 py-1 rounded-full font-bold"></span>
+                    </div>
+                    <div class="p-8">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div>
+                                <label class="text-xs font-black text-slate-400 block mb-2 uppercase tracking-widest">Order Title</label>
+                                <input type="text" id="newOrderName" class="w-full border border-slate-200 rounded-xl p-3 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs font-black text-slate-400 block mb-2 uppercase tracking-widest">Multiplier (배수)</label>
+                                <div class="flex items-center gap-4">
+                                    <input type="number" id="multiplier" value="1" min="1" class="w-24 border border-slate-200 rounded-xl p-3 text-center font-black text-blue-600 bg-slate-50">
+                                    <span class="text-slate-500 font-bold italic">X TIMES</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="border rounded-2xl mb-8 overflow-hidden bg-white shadow-inner">
+                            <table class="w-full text-sm text-left border-collapse">
+                                <thead class="bg-slate-50 border-b border-slate-100">
+                                    <tr><th class="p-4 font-black text-slate-500">PART NAME</th><th class="p-4 text-right font-black text-slate-500">BASE</th><th class="p-4 text-right font-black text-blue-600">FINAL</th></tr>
+                                </thead>
+                                <tbody id="bomPreviewTable" class="divide-y divide-slate-50"></tbody>
+                            </table>
+                        </div>
+                        <div class="flex gap-4">
+                            <button onclick="saveOrder()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-100 transition-all">DB SAVE</button>
+                            <button onclick="printPDF()" class="flex-1 bg-slate-900 hover:bg-black text-white font-black py-4 rounded-2xl shadow-xl shadow-slate-200 transition-all">PDF EXPORT</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+        import { getDatabase, ref, get, set, push, child } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-database.js";
+
+        // ✅ SKE-0001 기존 프로젝트 설정값
+        const firebaseConfig = {
+            databaseURL: "https://ske-0001-default-rtdb.firebaseio.com",
+            projectId: "ske-0001",
+            /* 기존 index.html에 있는 apiKey를 여기에 복사해넣으시면 더 정확합니다 */
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let currentProjectData = null;
+        let currentBom = [];
+
+        async function loadProjects() {
+            const listDiv = document.getElementById('projectList');
+            try {
+                const snapshot = await get(child(ref(db), 'projects'));
+                if (snapshot.exists()) {
+                    listDiv.innerHTML = "";
+                    const data = snapshot.val();
+                    for (let id in data) {
+                        const div = document.createElement('div');
+                        div.className = "bg-white p-4 rounded-xl border border-slate-100 mb-2 cursor-pointer hover:border-blue-500 hover:shadow-md transition-all group";
+                        div.innerHTML = `<h3 class="font-bold text-slate-800 group-hover:text-blue-600 transition">${data[id].projectName || 'Unnamed Project'}</h3><p class="text-xs text-slate-400 font-medium uppercase">${data[id].customerName || 'A-CORP'}</p>`;
+                        div.onclick = () => {
+                            currentProjectData = data[id];
+                            currentBom = data[id].bom ? (Array.isArray(data[id].bom) ? data[id].bom : Object.values(data[id].bom)) : [];
+                            document.getElementById('workArea').classList.remove('hidden');
+                            document.getElementById('selectedProjectName').innerText = data[id].projectName;
+                            document.getElementById('newOrderName').value = `${data[id].customerName}_${data[id].projectName}_ORDER`;
+                            updateTable();
+                        };
+                        listDiv.appendChild(div);
+                    }
+                } else {
+                    listDiv.innerHTML = "<div class='text-center py-10 text-slate-400 text-xs font-bold uppercase'>No Projects Found</div>";
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function updateTable() {
+            const m = parseInt(document.getElementById('multiplier').value) || 1;
+            document.getElementById('bomPreviewTable').innerHTML = currentBom.map(i => `
+                <tr class="hover:bg-slate-50 transition"><td class="p-4 font-bold text-slate-700">${i.partName}</td><td class="p-4 text-right text-slate-400 font-mono">${i.qty}</td><td class="p-4 text-right font-black text-blue-600 font-mono">${i.qty * m}</td></tr>
+            `).join('');
+        }
+
+        window.saveOrder = async () => {
+            const m = parseInt(document.getElementById('multiplier').value) || 1;
+            const newOrderRef = push(ref(db, 'orders'));
+            await set(newOrderRef, {
+                title: document.getElementById('newOrderName').value,
+                customer: currentProjectData.customerName,
+                items: currentBom.map(i => ({ ...i, finalQty: i.qty * m })),
+                createdAt: Date.now()
+            });
+            alert("✅ 주문서 데이터가 Firebase에 성공적으로 저장되었습니다.");
+        };
+
+        window.printPDF = () => {
+            const element = document.getElementById('workArea');
+            const opt = { margin: 10, filename: `${document.getElementById('newOrderName').value}.pdf`, jsPDF: { format: 'a4', orientation: 'portrait' }};
+            html2pdf().from(element).set(opt).save();
+        };
+
+        document.getElementById('multiplier').oninput = updateTable;
+        loadProjects();
+    </script>
+</body>
+</html>
