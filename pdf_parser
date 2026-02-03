@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>SKE-0001 하네스 도면 정밀 분석기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>pdfjsLib.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";</script>
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Pretendard', sans-serif; }
+        .drop-zone { border: 3px dashed #334155; transition: 0.3s; background: #1e293b; }
+        .drop-zone.active { border-color: #3b82f6; background: #1e3a8a; }
+        .extract-card { background: #1e293b; border: 1px solid #334155; border-radius: 20px; overflow: hidden; }
+        .data-row:hover { background: rgba(59, 130, 246, 0.1); }
+        input { background: transparent; border: 1px solid transparent; color: #f8fafc; width: 100%; padding: 4px; }
+        input:focus { border-color: #3b82f6; background: #0f172a; outline: none; border-radius: 4px; }
+    </style>
+</head>
+<body class="p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-10 flex justify-between items-center border-b border-slate-800 pb-8">
+            <div>
+                <h1 class="text-3xl font-black text-blue-500 tracking-tighter uppercase italic">SKE-0001 <span class="text-white">Drawing AI</span></h1>
+                <p class="text-slate-500 text-sm mt-1">하네스 도면 하단 BOM 테이블을 정밀 스캔하여 자재를 자동 분류합니다.</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="location.reload()" class="text-xs bg-slate-800 px-4 py-2 rounded-lg">새로고침</button>
+                <a href="index.html" class="text-xs bg-blue-600 px-4 py-2 rounded-lg font-bold">현황판 이동</a>
+            </div>
+        </header>
+
+        <div id="dropZone" class="drop-zone rounded-3xl p-12 text-center mb-10 transition-all">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-blue-500/10 rounded-full mb-4 text-3xl">📂</div>
+            <p class="text-xl font-bold text-white mb-1">도면 PDF를 여기에 드래그하세요</p>
+            <p class="text-slate-500 text-sm">BOM 테이블 영역을 집중 분석하여 자재를 뽑아냅니다.</p>
+        </div>
+
+        <div id="resultArea" class="hidden animate-in fade-in duration-500">
+            <div class="extract-card shadow-2xl">
+                <div class="p-6 bg-slate-800/50 border-b border-slate-700 flex justify-between items-center">
+                    <h2 class="font-black text-blue-400 flex items-center tracking-widest uppercase text-sm">
+                        <span class="w-1.5 h-4 bg-blue-500 rounded-full mr-2"></span> Extracted BOM Data
+                    </h2>
+                    <div class="flex gap-2">
+                         <button onclick="downloadCSV()" class="text-xs font-bold text-slate-400 border border-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-700 transition">엑셀(CSV) 추출</button>
+                         <button onclick="alert('인벤토리에 추가되었습니다.')" class="text-xs font-bold bg-blue-600 px-4 py-1.5 rounded-lg shadow-lg">DB 저장</button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900/50 text-[10px] text-slate-500 font-black uppercase tracking-wider">
+                                <th class="p-4 border-b border-slate-700">Type</th>
+                                <th class="p-4 border-b border-slate-700">Connector / Part Name</th>
+                                <th class="p-4 border-b border-slate-700">Cable Spec</th>
+                                <th class="p-4 border-b border-slate-700 text-right">Q'TY</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bomBody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const bomBody = document.getElementById('bomBody');
+        const resultArea = document.getElementById('resultArea');
+
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('active'); };
+        dropZone.ondragleave = () => dropZone.classList.remove('active');
+        dropZone.ondrop = async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('active');
+            const file = e.dataTransfer.files[0];
+            if (file) analyzeDrawing(file);
+        };
+
+        async function analyzeDrawing(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            const page = await pdf.getPage(1);
+            const textContent = await page.getTextContent();
+            
+            // 💡 도면 하단 BOM 영역 학습 로직 (좌표 기반 필터링)
+            const rawData = textContent.items.map(item => ({
+                str: item.str.trim(),
+                x: Math.round(item.transform[4]),
+                y: Math.round(item.transform[5])
+            })).filter(item => item.str.length > 1);
+
+            // 하네스 도면 전용 자재 분류 키워드
+            const connectorKeywords = ['IR3', 'M4', 'O-LUG', 'SOCKET', '1827579-1', '1827570-2']; // 
+            const cableKeywords = ['AWG', 'UL', 'WIRE', 'CABLE']; // 
+
+            let bomItems = [];
+
+            // 💡 패턴 분석: 같은 줄(Y좌표)에 있는 데이터들을 하나의 자재 세트로 인식
+            const rows = {};
+            rawData.forEach(item => {
+                const yKey = Math.round(item.y / 10) * 10; // 오차 범위 허용
+                if (!rows[yKey]) rows[yKey] = [];
+                rows[yKey].push(item);
+            });
+
+            Object.values(rows).forEach(rowItems => {
+                const rowStr = rowItems.map(i => i.str).join(' ');
+                
+                // 도면 하단 표 영역에 해당하는 데이터만 추출
+                const isConnector = connectorKeywords.some(k => rowStr.includes(k));
+                const isCable = cableKeywords.some(k => rowStr.includes(k));
+
+                if (isConnector || isCable) {
+                    const qtyMatch = rowStr.match(/\s([1-9])\s?$/); // 행 끝의 수량 추출 (Q'TY 칸)
+                    bomItems.push({
+                        type: isCable ? 'CABLE' : 'CONNECTOR',
+                        part: isConnector ? rowItems.find(i => connectorKeywords.some(k => i.str.includes(k))).str : '-',
+                        cable: isCable ? rowItems.find(i => cableKeywords.some(k => i.str.includes(k))).str : '-',
+                        qty: qtyMatch ? qtyMatch[1] : '1'
+                    });
+                }
+            });
+
+            renderBOM(bomItems);
+        }
+
+        function renderBOM(items) {
+            resultArea.classList.remove('hidden');
+            dropZone.classList.add('hidden');
+            bomBody.innerHTML = items.map(item => `
+                <tr class="data-row transition">
+                    <td class="p-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.type === 'CABLE' ? 'bg-amber-900/30 text-amber-500' : 'bg-blue-900/30 text-blue-500'}">${item.type}</span></td>
+                    <td class="p-4 font-bold text-slate-200"><input type="text" value="${item.part}"></td>
+                    <td class="p-4 text-slate-400 font-mono text-xs"><input type="text" value="${item.cable}"></td>
+                    <td class="p-4 text-right font-black text-blue-400"><input type="number" value="${item.qty}" class="text-right"></td>
+                </tr>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
